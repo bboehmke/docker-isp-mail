@@ -1,0 +1,5 @@
+user = {{MYSQL_USER}}
+password = {{MYSQL_PASSWORD}}
+hosts = {{MYSQL_HOST}}
+dbname = {{MYSQL_DATABASE}}
+query = {{MYSQL_QUERY}}

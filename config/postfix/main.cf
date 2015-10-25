@@ -1,0 +1,87 @@
+# =====================================
+# General settings
+# =====================================
+
+# hostname of the mail server
+myhostname = {{HOSTNAME}}
+
+# message in the SMTP server's greeting banner
+smtpd_banner = $myhostname ESMTP $mail_name
+
+# deactivate notification service for local user
+biff = no
+
+# no relay host
+relayhost = 
+
+# trusted networks for additional privileges
+mynetworks = 127.0.0.0/8
+
+# set size of mailbox (bytes)
+mailbox_size_limit = {{MAILBOX_SIZE}}
+
+# set recipient delimiter (GMail like alias address)
+recipient_delimiter = +
+
+
+# =====================================
+# TLS settings
+# =====================================
+
+# activate TLS (yes/no)
+smtpd_use_tls = yes
+
+# path to TLS key
+smtpd_tls_key_file = {{SSL_KEY}}
+
+# path to TLS cert
+smtpd_tls_cert_file = {{SSL_CERT}}
+
+# path for TLS cache
+smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
+smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+
+
+# =====================================
+# Authentication settings
+# =====================================
+
+# enable SMTP authentication
+smtpd_sasl_auth_enable = yes
+
+# set SASL plug-in for authentication
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+
+# set TLS to optional
+smtpd_tls_security_level = may
+
+# do not accept authentication over
+smtpd_tls_auth_only = yes
+
+
+# =====================================
+# Virtual host settings
+# =====================================
+
+# lookup for existing virtual domains
+virtual_mailbox_domains = mysql:/etc/postfix/mysql/virtual_mailbox_domains.cf
+
+# lookup for existing virtual mailboxes
+virtual_mailbox_maps = mysql:/etc/postfix/mysql/virtual_mailbox_maps.cf
+
+# list of existing virtual alias
+virtual_alias_maps = mysql:/etc/postfix/mysql/virtual_alias_maps.cf,mysql:/etc/postfix/mysql/email2email.cf
+
+# set dovecot as delivery service for virtual domains
+virtual_transport = dovecot
+dovecot_destination_recipient_limit = 1
+
+# =====================================
+# SpamAssassin
+# =====================================
+# set SpamAssassin socket
+smtpd_milters = unix:/spamass/spamass.sock
+
+# set macros
+milter_connect_macros = i j {daemon_name} v {if_name} _
