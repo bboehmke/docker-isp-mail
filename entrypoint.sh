@@ -54,7 +54,7 @@ sed 's/{{MYSQL_HOST}}/'"${MYSQL_HOST}"'/g' -i /etc/postfix/mysql_tpl.cf
 sed 's/{{MYSQL_USER}}/'"${MYSQL_USER}"'/g' -i /etc/postfix/mysql_tpl.cf
 sed 's/{{MYSQL_PASSWORD}}/'"${MYSQL_PASSWORD}"'/g' -i /etc/postfix/mysql_tpl.cf
 sed 's/{{MYSQL_DATABASE}}/'"${MYSQL_DATABASE}"'/g' -i /etc/postfix/mysql_tpl.cf
-mkdir /etc/postfix/mysql
+mkdir -p /etc/postfix/mysql
 # > virtual domains
 cp /etc/postfix/mysql_tpl.cf /etc/postfix/mysql/virtual_mailbox_domains.cf
 sed 's/{{MYSQL_QUERY}}/'"${MYSQL_QUERY_VIRTUAL_DOMAINS}"'/g' -i /etc/postfix/mysql/virtual_mailbox_domains.cf
