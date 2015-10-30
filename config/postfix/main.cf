@@ -28,8 +28,10 @@ recipient_delimiter = +
 # TLS settings
 # =====================================
 
-# activate TLS (yes/no)
+# activate TLS
 smtpd_use_tls = yes
+smtpd_tls_security_level = may
+smtp_tls_security_level = may
 
 # path to TLS key
 smtpd_tls_key_file = {{SSL_KEY}}
@@ -57,7 +59,6 @@ smtpd_tls_eecdh_grade = strong
 # prefer server cipher order
 tls_preempt_cipherlist = yes
 
-
 # =====================================
 # Authentication settings
 # =====================================
@@ -68,9 +69,6 @@ smtpd_sasl_auth_enable = yes
 # set SASL plug-in for authentication
 smtpd_sasl_type = dovecot
 smtpd_sasl_path = private/auth
-
-# set TLS to optional
-smtpd_tls_security_level = may
 
 # do not accept authentication over
 smtpd_tls_auth_only = yes
