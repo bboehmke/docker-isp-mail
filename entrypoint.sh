@@ -115,6 +115,10 @@ mkdir -p ${MAIL_DIR}
 chown -R vmail:vmail ${MAIL_DIR}
 chmod u+w ${MAIL_DIR}
 
+# add missing files to postfix chroot
+cp -f /etc/services /var/spool/postfix/etc/services
+cp -f /etc/resolv.conf /var/spool/postfix/etc/resolv.conf
+
 
 appInit () {
   # due to the nature of docker and its use cases, we allow some time
