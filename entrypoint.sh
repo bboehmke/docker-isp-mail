@@ -119,6 +119,10 @@ chmod u+w ${MAIL_DIR}
 cp -f /etc/services /var/spool/postfix/etc/services
 cp -f /etc/resolv.conf /var/spool/postfix/etc/resolv.conf
 
+# generate dh parm for postfix
+echo "Start Generating DH parameters this may take some time ..."
+openssl gendh -out /etc/postfix/dh_512.pem -2 512
+openssl gendh -out /etc/postfix/dh_2048.pem -2 2048
 
 appInit () {
   # due to the nature of docker and its use cases, we allow some time
@@ -144,6 +148,8 @@ appInit () {
 }
 
 appStart () {
+  echo 
+  echo "Prepare start of of Server"
   appInit
   # start supervisord
   echo "Starting supervisord..."
