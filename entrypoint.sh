@@ -10,6 +10,7 @@ POSTMASTER_ADDRESS={$POSTMASTER_ADDRESS:-"root"}
 # SSL settings
 SSL_KEY=${SSL_KEY:-mail.key}
 SSL_CERT=${SSL_CERT:-mail.crt}
+DH_PARAM_LENGTH=${SSL_CERT:-1024}
 
 # check if cert and key exists
 if [[ ! -f "${DATA_DIR}/ssl/${SSL_KEY}" || 
@@ -78,6 +79,7 @@ sed 's,{{POSTMASTER_ADDRESS}},'"${POSTMASTER_ADDRESS}"',g' -i /etc/dovecot/conf.
 # Dovecot - SSL
 sed 's,{{SSL_KEY}},'"${DATA_DIR}/ssl/${SSL_KEY}"',g' -i /etc/dovecot/conf.d/10-ssl.conf
 sed 's,{{SSL_CERT}},'"${DATA_DIR}/ssl/${SSL_CERT}"',g' -i /etc/dovecot/conf.d/10-ssl.conf
+sed 's/{{DH_PARAM_LENGTH}}/'"${DH_PARAM_LENGTH}"'/g' -i /etc/dovecot/conf.d/10-ssl.conf
 
 # Dovecot - MySQL
 sed 's/{{MYSQL_HOST}}/'"${MYSQL_HOST}"'/g' -i /etc/dovecot/dovecot-sql.conf.ext
@@ -122,7 +124,7 @@ cp -f /etc/resolv.conf /var/spool/postfix/etc/resolv.conf
 # generate dh parm for postfix
 echo "Start Generating DH parameters this may take some time ..."
 openssl gendh -out /etc/postfix/dh_512.pem -2 512
-openssl gendh -out /etc/postfix/dh_2048.pem -2 2048
+openssl gendh -out /etc/postfix/dh_1024.pem -2 ${DH_PARAM_LENGTH}
 
 appInit () {
   # due to the nature of docker and its use cases, we allow some time
