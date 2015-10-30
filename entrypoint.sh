@@ -10,7 +10,7 @@ POSTMASTER_ADDRESS={$POSTMASTER_ADDRESS:-"root"}
 # SSL settings
 SSL_KEY=${SSL_KEY:-mail.key}
 SSL_CERT=${SSL_CERT:-mail.crt}
-DH_PARAM_LENGTH=${SSL_CERT:-1024}
+DH_PARAM_LENGTH=${DH_PARAM_LENGTH:-1024}
 
 # check if cert and key exists
 if [[ ! -f "${DATA_DIR}/ssl/${SSL_KEY}" || 
@@ -89,9 +89,6 @@ sed 's/{{MYSQL_DATABASE}}/'"${MYSQL_DATABASE}"'/g' -i /etc/dovecot/dovecot-sql.c
 sed 's/{{MYSQL_QUERY_PASSWORD}}/'"${MYSQL_QUERY_PASSWORD}"'/g' -i /etc/dovecot/dovecot-sql.conf.ext
 sed 's;{{MYSQL_QUERY_USER}};'"${MYSQL_QUERY_USER}"';g' -i /etc/dovecot/dovecot-sql.conf.ext
 
-# compile sieve scripts
-sievec /etc/dovecot/sieve-after/spam-to-folder.sieve
-
 # move log files to data dir
 mkdir -p ${DATA_DIR}/log/
 sed 's;/var/log/mail;'"${DATA_DIR}/log/mail"';g' -i /etc/rsyslog.conf
@@ -121,11 +118,6 @@ chmod u+w ${MAIL_DIR}
 cp -f /etc/services /var/spool/postfix/etc/services
 cp -f /etc/resolv.conf /var/spool/postfix/etc/resolv.conf
 
-# generate dh parm for postfix
-echo "Start Generating DH parameters this may take some time ..."
-openssl gendh -out /etc/postfix/dh_512.pem -2 512
-openssl gendh -out /etc/postfix/dh_1024.pem -2 ${DH_PARAM_LENGTH}
-
 appInit () {
   # due to the nature of docker and its use cases, we allow some time
   # for the database server to come online.
@@ -147,6 +139,15 @@ appInit () {
 
   echo "Create MySQL table if not exist"
   mysql -h ${MYSQL_HOST} -P ${MYSQL_PORT} -u ${MYSQL_USER} -p${MYSQL_PASSWORD} -D ${MYSQL_DATABASE} < /etc/postfix/mail.sql
+
+  # generate dh param for postfix
+  echo "Start Generating DH parameters this may take some time ..."
+  openssl gendh -out /etc/postfix/dh_512.pem -2 512
+  openssl gendh -out /etc/postfix/dh_1024.pem -2 ${DH_PARAM_LENGTH}
+
+  # compile sieve scripts
+  echo "Compile sieve scripts"
+  sievec /etc/dovecot/sieve-after/spam-to-folder.sieve
 }
 
 appStart () {
