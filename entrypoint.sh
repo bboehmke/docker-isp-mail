@@ -38,7 +38,7 @@ MYSQL_PORT=${MYSQL_PORT:-3306}
 MYSQL_QUERY_VIRTUAL_DOMAINS="SELECT 1 FROM virtual_domains WHERE name='%s'"
 MYSQL_QUERY_VIRTUAL_MAIL="SELECT 1 FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE CONCAT(virtual_users.name,\"@\",virtual_domains.name)='%s'"
 MYSQL_QUERY_VIRTUAL_ALIAS="SELECT destination FROM virtual_aliases JOIN virtual_domains ON virtual_aliases.domain_id = virtual_domains.id WHERE concat(virtual_aliases.source,\"@\",virtual_domains.name)='%s'"
-MYSQL_QUERY_VIRTUAL_MAIL_MAIL="SELECT CONCAT(virtual_users.name,\"@\",virtual_domains.name) AS email FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = SUBSTRING_INDEX('%u', '+', 1) AND virtual_domains.name ='%d'"
+MYSQL_QUERY_VIRTUAL_MAIL_MAIL="SELECT CONCAT(virtual_users.name,\"@\",virtual_domains.name) AS email FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%u' AND virtual_domains.name ='%d'"
 MYSQL_QUERY_PASSWORD="SELECT virtual_users.name AS username, virtual_domains.name AS domain, password FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%n' AND virtual_domains.name = '%d'"
 MYSQL_QUERY_USER="SELECT 5000 AS uid, 5000 AS gid, '${MAIL_DIR}/%d/%n' AS home FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%n' AND virtual_domains.name ='%d'"
 

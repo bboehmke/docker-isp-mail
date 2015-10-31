@@ -73,4 +73,4 @@ scache    unix  -       -       -       -       1       scache
 # ====================================================================
 #
 dovecot   unix  -       n       n       -       -       pipe
- flags=DRhu user=vmail:vmail argv=/usr/lib/dovecot/dovecot-lda -f ${sender} -d ${recipient}
+ flags=DRhu user=vmail:vmail argv=/usr/lib/dovecot/dovecot-lda -f ${sender} -a ${recipient} -d ${user}@${nexthop}
