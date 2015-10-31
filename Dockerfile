@@ -45,8 +45,8 @@ RUN chmod 755 /sbin/entrypoint.sh
 VOLUME "${DATA_DIR}"
 
 # expose ports
-#      SMTP    POP3     IMAP
-EXPOSE 25 465  110 995  143 993
+#      SMTP    POP3     IMAP     Sieve
+EXPOSE 25 465  110 995  143 993  4190
 
 # set entrypoint
 ENTRYPOINT ["/sbin/entrypoint.sh"]
