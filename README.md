@@ -27,6 +27,17 @@ docker run --name isp-mail -h isp-mail -d \
     bboehmke/isp-mail:latest
 ```
 
+## Ports
+
+If the server should be reachable from outside the host system, there are some 
+ports that must be forwarded. 
+
+- **SMTP (25 & 465)**: Send and receive mails. (communication between mail servers)
+- **POP3 (110 & 995)**: Access received mails on the server. (Delete on server)
+- **IMAP (143 & 993)**: Access received mails on the server. (No delete on server + folder support)
+- **Sieve (4190)**: Manage filter rules for received mails.
+
+
 ## Upgrading
 
 To upgrade to a newer version of the image follow this steps:
