@@ -1,0 +1,14 @@
+# Database driver
+driver = {{DB_DRIVER}} 
+
+# Database connection string
+connect = host={{DB_HOST}} port={{DB_PORT}} dbname={{DB_NAME}} user={{DB_USER}} password={{DB_PASS}}
+
+# Default password scheme
+default_pass_scheme = SHA512-CRYPT
+
+# Set password query
+password_query = {{QUERY_DOVECOT_PASSWORD}}
+
+# Set user query
+user_query = {{QUERY_DOVECOT_USER}}

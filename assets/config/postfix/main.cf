@@ -34,10 +34,10 @@ smtpd_tls_security_level = may
 smtp_tls_security_level = may
 
 # path to TLS key
-smtpd_tls_key_file = {{SSL_KEY}}
+smtpd_tls_key_file = {{SSL_KEY_PATH}}
 
 # path to TLS cert
-smtpd_tls_cert_file = {{SSL_CERT}}
+smtpd_tls_cert_file = {{SSL_CERT_PATH}}
 
 # path for TLS cache
 smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
@@ -79,13 +79,13 @@ smtpd_tls_auth_only = yes
 # =====================================
 
 # lookup for existing virtual domains
-virtual_mailbox_domains = mysql:/etc/postfix/mysql/virtual_mailbox_domains.cf
+virtual_mailbox_domains = {{DB_DRIVER}}:/etc/postfix/database_virtual_mailbox_domains.cf
 
 # lookup for existing virtual mailboxes
-virtual_mailbox_maps = mysql:/etc/postfix/mysql/virtual_mailbox_maps.cf
+virtual_mailbox_maps = {{DB_DRIVER}}:/etc/postfix/database_virtual_mailbox_maps.cf
 
 # list of existing virtual alias
-virtual_alias_maps = mysql:/etc/postfix/mysql/virtual_alias_maps.cf,mysql:/etc/postfix/mysql/email2email.cf
+virtual_alias_maps = {{DB_DRIVER}}:/etc/postfix/database_virtual_alias_maps.cf,{{DB_DRIVER}}:/etc/postfix/database_email2email.cf
 
 # set dovecot as delivery service for virtual domains
 virtual_transport = dovecot
