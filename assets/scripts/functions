@@ -270,7 +270,7 @@ init_database() {
         mysql -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} -p${DB_PASS} -D ${DB_NAME} < /etc/isp-mail/sql/mysql_mail_improved.sql
         ;;
       postgresql)
-        `PGPASSWORD="${DB_PASS}" psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} -Atw -f /etc/isp-mail/sql/postgres_mail_improved.sql`
+        PGPASSWORD="${DB_PASS}" psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} -Atw -f /etc/isp-mail/sql/postgres_mail_improved.sql
         ;;
     esac
     

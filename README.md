@@ -93,7 +93,7 @@ docker run --name isp-mail -d \
     -e DB_ADAPTER=postgresql \
     -e DB_HOST=192.168.1.42 \
     -e DB_NAME=mailDB \
-    -e DB_USER=mail
+    -e DB_USER=mail \
     -e DB_PASS=password \
     -v /srv/docker/isp-mail:/data \
     bboehmke/isp-mail:latest
@@ -113,10 +113,10 @@ Please refer the postgresql image for details.
 
 First, start the postgresql container:
 ```bash
-docker run --name postgres 
-    -e POSTGRES_PASSWORD=password 
-    -e POSTGRES_DB=mailDB 
-    -e POSTGRES_USER=mail 
+docker run --name mail-postgresql \
+    -e POSTGRES_PASSWORD=password \
+    -e POSTGRES_DB=mailDB \
+    -e POSTGRES_USER=mail \
     postgres
 ```
 
@@ -155,7 +155,7 @@ docker run --name isp-mail -d \
     -e DB_ADAPTER=mysql \
     -e DB_HOST=192.168.1.42 \
     -e DB_NAME=mailDB \
-    -e DB_USER=mail
+    -e DB_USER=mail \
     -e DB_PASS=password \
     -v /srv/docker/isp-mail:/data \
     bboehmke/isp-mail:latest
@@ -175,10 +175,11 @@ Please refer the README of the mysql image for details.
 
 First, start the mysql container:
 ```bash
-docker run --name mysql 
-    -e MYSQL_PASSWORD=password 
-    -e MYSQL_DATABASE=mailDB 
-    -e MYSQL_USER=mail 
+docker run --name mail-mysql \
+    -e MYSQL_PASSWORD=password \
+    -e MYSQL_DATABASE=mailDB \
+    -e MYSQL_USER=mail \
+    -e MYSQL_RANDOM_ROOT_PASSWORD=true \
     mysql
 ```
 
@@ -303,7 +304,7 @@ docker rm isp-mail
 
 ```bash
 docker run --name isp-mail -h isp-mail -d \
-    [OPTIONS]
+    [OPTIONS] \
     bboehmke/isp-mail:latest
 ```
 
