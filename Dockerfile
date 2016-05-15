@@ -2,13 +2,15 @@ FROM debian:jessie
 MAINTAINER Benjamin Böhmke
 
 ENV DATA_DIR=/data \
-    MAIL_DIR=/data/maildir
+    MAIL_DIR=/data/maildir \
+    SCRIPT_DIR=/opt/scripts
 
 # get and install software
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y supervisor logrotate \
-        postfix postfix-mysql swaks dovecot-mysql dovecot-pop3d dovecot-imapd \
-        dovecot-managesieved mysql-client rsyslog spamassassin spamass-milter && \
+        postfix postfix-mysql postfix-pgsql swaks dovecot-mysql dovecot-pgsql \
+        dovecot-pop3d dovecot-imapd dovecot-managesieved mysql-client \
+        postgresql-client rsyslog spamassassin spamass-milter sudo gettext-base && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -27,19 +29,24 @@ RUN groupadd -g 5000 vmail && \
     useradd -g vmail -u 5000 vmail -d ${MAIL_DIR} && \
     adduser spamass-milter debian-spamd
 
+# TODO move up
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y 
+
 # copy new configurations
-COPY config/dovecot/ /etc/dovecot/
-COPY config/postfix/ /etc/postfix/
-COPY config/supervisor/ /etc/supervisor/conf.d/
-COPY config/spamassassin/spamassassin /etc/default/spamassassin
+COPY assets/config/dovecot/ /etc/dovecot/
+COPY assets/config/postfix/ /etc/postfix/
+COPY assets/config/supervisor/ /etc/supervisor/conf.d/
+COPY assets/config/spamassassin/spamassassin /etc/default/spamassassin
+COPY assets/sql/ /etc/isp-mail/sql/
 
 # copy crons
-COPY config/cron/spamassassin /etc/cron.daily/spamassassin
+COPY assets/config/cron/spamassassin /etc/cron.daily/spamassassin
 RUN chmod +x /etc/cron.daily/spamassassin
 
 # prepare entry point
-COPY entrypoint.sh /sbin/entrypoint.sh
-RUN chmod 755 /sbin/entrypoint.sh
+COPY assets/scripts ${SCRIPT_DIR}
+RUN chmod 755 ${SCRIPT_DIR}/entrypoint.sh
 
 # set volume
 VOLUME "${DATA_DIR}"
@@ -49,5 +56,5 @@ VOLUME "${DATA_DIR}"
 EXPOSE 25 465  110 995  143 993  4190
 
 # set entrypoint
-ENTRYPOINT ["/sbin/entrypoint.sh"]
+ENTRYPOINT ["/opt/scripts/entrypoint.sh"]
 CMD ["app:start"]

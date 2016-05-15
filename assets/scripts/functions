@@ -1,0 +1,279 @@
+#!/bin/bash
+set -e
+source ${SCRIPT_DIR}/env-defaults
+
+
+FILE_POSTFIX_MAIN="/etc/postfix/main.cf"
+FILE_POSTFIX_DATABASE_TPL="/etc/postfix/database_tpl.cf"
+FILE_POSTFIX_DATABASE_DOMAINS="/etc/postfix/database_virtual_mailbox_domains.cf"
+FILE_POSTFIX_DATABASE_MAIL="/etc/postfix/database_virtual_mailbox_maps.cf"
+FILE_POSTFIX_DATABASE_ALIAS="/etc/postfix/database_virtual_alias_maps.cf"
+FILE_POSTFIX_DATABASE_MAIL_MAIL="/etc/postfix/database_email2email.cf"
+
+FILE_DOVECOT_CONF_MAIL="/etc/dovecot/conf.d/10-mail.conf"
+FILE_DOVECOT_CONF_SSL="/etc/dovecot/conf.d/10-ssl.conf"
+FILE_DOVECOT_CONF_LDA="/etc/dovecot/conf.d/15-lda.conf"
+FILE_DOVECOT_CONF_SQL="/etc/dovecot/dovecot-sql.conf.ext"
+
+
+
+
+QUERY_POSTFIX_VIRTUAL_DOMAINS="SELECT 1 FROM virtual_domains WHERE name='%s'"
+QUERY_POSTFIX_VIRTUAL_MAIL="SELECT 1 FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE CONCAT(virtual_users.name,'@',virtual_domains.name)='%s'"
+QUERY_POSTFIX_VIRTUAL_ALIAS="SELECT destination FROM virtual_aliases JOIN virtual_domains ON virtual_aliases.domain_id = virtual_domains.id WHERE concat(virtual_aliases.source,'@',virtual_domains.name)='%s'"
+QUERY_POSTFIX_VIRTUAL_MAIL_MAIL="SELECT CONCAT(virtual_users.name,'@',virtual_domains.name) AS email FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%u' AND virtual_domains.name ='%d'"
+
+QUERY_DOVECOT_PASSWORD="SELECT virtual_users.name AS username, virtual_domains.name AS domain, password FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%n' AND virtual_domains.name = '%d'"
+QUERY_DOVECOT_USER="SELECT 5000 AS uid, 5000 AS gid, '${MAIL_DIR}/%d/%n' AS home FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%n' AND virtual_domains.name ='%d'"
+
+
+## Replace placeholders with values
+# $1: file with placeholders to replace
+# $x: placeholders to replace
+update_template() {
+  local FILE=${1?missing argument}
+  shift
+
+  [[ ! -f ${FILE} ]] && return 1
+
+  local VARIABLES=($@)
+  local USR=$(stat -c %U ${FILE})
+  local tmp_file=$(mktemp)
+  cp -a "${FILE}" ${tmp_file}
+
+  local variable
+  for variable in ${VARIABLES[@]}; do
+    # Keep the compatibilty: {{VAR}} => ${VAR}
+    sed -ri "s/[{]{2}$variable[}]{2}/\${$variable}/g" ${tmp_file}
+  done
+
+  # Replace placeholders
+  (
+    export ${VARIABLES[@]}
+    local IFS=":"; sudo -HEu ${USR} envsubst "${VARIABLES[*]/#/$}" < ${tmp_file} > ${FILE}
+  )
+  rm -f ${tmp_file}
+}
+
+finalize_database_parameters() {
+  # is a mysql or postgresql database linked?
+  # requires that the mysql or postgresql containers have exposed
+  # port 3306 and 5432 respectively.
+  if [[ -n ${MYSQL_PORT_3306_TCP_ADDR} ]]; then
+    DB_TYPE=${DB_TYPE:-mysql}
+    DB_HOST=${DB_HOST:-${MYSQL_PORT_3306_TCP_ADDR}}
+    DB_PORT=${DB_PORT:-${MYSQL_PORT_3306_TCP_PORT}}
+
+    # support for linked sameersbn/mysql image
+    DB_USER=${DB_USER:-${MYSQL_ENV_DB_USER}}
+    DB_PASS=${DB_PASS:-${MYSQL_ENV_DB_PASS}}
+    DB_NAME=${DB_NAME:-${MYSQL_ENV_DB_NAME}}
+
+    # support for linked orchardup/mysql and enturylink/mysql image
+    # also supports official mysql image
+    DB_USER=${DB_USER:-${MYSQL_ENV_MYSQL_USER}}
+    DB_PASS=${DB_PASS:-${MYSQL_ENV_MYSQL_PASSWORD}}
+    DB_NAME=${DB_NAME:-${MYSQL_ENV_MYSQL_DATABASE}}
+  elif [[ -n ${POSTGRESQL_PORT_5432_TCP_ADDR} ]]; then
+    DB_TYPE=${DB_TYPE:-postgresql}
+    DB_HOST=${DB_HOST:-${POSTGRESQL_PORT_5432_TCP_ADDR}}
+    DB_PORT=${DB_PORT:-${POSTGRESQL_PORT_5432_TCP_PORT}}
+
+    # support for linked official postgres image
+    DB_USER=${DB_USER:-${POSTGRESQL_ENV_POSTGRES_USER}}
+    DB_PASS=${DB_PASS:-${POSTGRESQL_ENV_POSTGRES_PASSWORD}}
+    DB_NAME=${DB_NAME:-${POSTGRESQL_ENV_POSTGRES_DB}}
+    DB_NAME=${DB_NAME:-${POSTGRESQL_ENV_POSTGRES_USER}}
+
+    # support for linked sameersbn/postgresql image
+    DB_USER=${DB_USER:-${POSTGRESQL_ENV_DB_USER}}
+    DB_PASS=${DB_PASS:-${POSTGRESQL_ENV_DB_PASS}}
+    DB_NAME=${DB_NAME:-${POSTGRESQL_ENV_DB_NAME}}
+
+    # support for linked orchardup/postgresql image
+    DB_USER=${DB_USER:-${POSTGRESQL_ENV_POSTGRESQL_USER}}
+    DB_PASS=${DB_PASS:-${POSTGRESQL_ENV_POSTGRESQL_PASS}}
+    DB_NAME=${DB_NAME:-${POSTGRESQL_ENV_POSTGRESQL_DB}}
+
+    # support for linked paintedfox/postgresql image
+    DB_USER=${DB_USER:-${POSTGRESQL_ENV_USER}}
+    DB_PASS=${DB_PASS:-${POSTGRESQL_ENV_PASS}}
+    DB_NAME=${DB_NAME:-${POSTGRESQL_ENV_DB}}
+  fi
+
+  if [[ -z ${DB_HOST} ]]; then
+    echo
+    echo "ERROR: "
+    echo "  Please configure the database connection."
+    echo "  Cannot continue without a database. Aborting..."
+    echo
+    return 1
+  fi
+
+  # set default port number if not specified
+  DB_TYPE=${DB_TYPE:-mysql}
+  case ${DB_TYPE} in
+    mysql)
+      DB_PORT=${DB_PORT:-3306}
+      DB_DRIVER="mysql"
+      ;;
+    postgresql)
+      DB_PORT=${DB_PORT:-5432}
+      DB_DRIVER="pgsql"
+      ;;
+    *)
+      echo
+      echo "ERROR: "
+      echo "  Please specify the database type in use via the DB_TYPE configuration option."
+      echo "  Accepted values are \"postgresql\" or \"mysql\". Aborting..."
+      echo
+      return 1
+      ;;
+  esac
+
+  # set default user and database
+  DB_USER=${DB_USER:-root}
+  DB_NAME=${DB_NAME:-mail}
+}
+
+check_database_connection() {
+  case ${DB_TYPE} in
+    mysql)
+      prog="mysqladmin -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} ${DB_PASS:+-p$DB_PASS} status"
+      ;;
+    postgresql)
+      prog=$(find /usr/lib/postgresql/ -name pg_isready)
+      prog="${prog} -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} -t 1"
+      ;;
+  esac
+  timeout=60
+  while ! ${prog} >/dev/null 2>&1
+  do
+    timeout=$(expr $timeout - 1)
+    if [[ $timeout -eq 0 ]]; then
+      echo
+      echo "Could not connect to database server. Aborting..."
+      return 1
+    fi
+    echo -n "."
+    sleep 1
+  done
+  echo
+}
+
+
+configure_dovecot() {
+  echo "Configuring Dovecot"
+
+  update_template ${FILE_DOVECOT_CONF_MAIL} MAIL_DIR
+  update_template ${FILE_DOVECOT_CONF_SSL} SSL_KEY_PATH SSL_CERT_PATH SSL_DH_PARAM_LENGTH
+  update_template ${FILE_DOVECOT_CONF_LDA} POSTMASTER_ADDRESS
+
+  update_template ${FILE_DOVECOT_CONF_SQL} \
+    DB_DRIVER \
+    DB_HOST \
+    DB_PORT \
+    DB_USER \
+    DB_PASS \
+    DB_NAME \
+    QUERY_DOVECOT_PASSWORD \
+    QUERY_DOVECOT_USER
+}
+
+
+configure_postfix() {
+  echo "Configuring Postfix"
+
+  update_template ${FILE_POSTFIX_MAIN} HOSTNAME MAILBOX_SIZE SSL_KEY_PATH SSL_CERT_PATH DB_DRIVER
+
+  create_postfix_sql ${FILE_POSTFIX_DATABASE_DOMAINS} "${QUERY_POSTFIX_VIRTUAL_DOMAINS}"
+  create_postfix_sql ${FILE_POSTFIX_DATABASE_MAIL} "${QUERY_POSTFIX_VIRTUAL_MAIL}"
+  create_postfix_sql ${FILE_POSTFIX_DATABASE_ALIAS} "${QUERY_POSTFIX_VIRTUAL_ALIAS}"
+  create_postfix_sql ${FILE_POSTFIX_DATABASE_MAIL_MAIL} "${QUERY_POSTFIX_VIRTUAL_MAIL_MAIL}"
+
+  # add missing files to postfix chroot
+  cp -f /etc/services /var/spool/postfix/etc/services
+  cp -f /etc/resolv.conf /var/spool/postfix/etc/resolv.conf
+  cp -f /etc/aliases /var/spool/postfix/etc/aliases
+}
+
+## Replace placeholders with values
+# $1: Destination file
+# $2: SQL query
+create_postfix_sql() {
+  # copy template
+  cp ${FILE_POSTFIX_DATABASE_TPL} $1
+
+  DB_QUERY=$2
+
+  # update template
+  update_template $1 \
+    DB_HOST \
+    DB_PORT \
+    DB_USER \
+    DB_PASS \
+    DB_NAME \
+    DB_QUERY
+}
+
+
+configure_rsyslog() {
+  echo "Configuring rsyslog"
+
+  # move log files to data dir
+  mkdir -p ${DATA_DIR}/log/
+  sed 's;/var/log/mail;'"${DATA_DIR}/log/mail"';g' -i /etc/rsyslog.conf
+  sed 's;/var/log/mail;'"${DATA_DIR}/log/mail"';g' -i /etc/logrotate.d/rsyslog
+}
+
+
+
+check_and_prepare_SSL() {
+  # check if cert and key exists
+  if [[ ! -f "${DATA_DIR}/ssl/${SSL_KEY}" || 
+        ! -f "${DATA_DIR}/ssl/${SSL_CERT}" ]]; then
+    echo "ERROR: "
+    echo "  Please configure the SSL settings."
+    echo "  Cannot continue without a SSL certificate and key. Aborting..."
+    exit 1
+  fi
+
+  # set path variables
+  SSL_KEY_PATH="${DATA_DIR}/ssl/${SSL_KEY}"
+  SSL_CERT_PATH="${DATA_DIR}/ssl/${SSL_CERT}"
+
+  # generate dh param for postfix
+  echo "Start Generating DH parameters this may take some time ..."
+  openssl gendh -out /etc/postfix/dh_512.pem -2 512
+  openssl gendh -out /etc/postfix/dh_1024.pem -2 ${SSL_DH_PARAM_LENGTH}
+}
+
+
+
+init_database() {
+  # check if installation is required
+  case ${DB_TYPE} in
+    mysql)
+      QUERY="SELECT count(*) FROM information_schema.tables WHERE table_schema = '${DB_NAME}';"
+      COUNT=$(mysql -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} ${DB_PASS:+-p$DB_PASS} -ss -e "${QUERY}")
+      ;;
+    postgresql)
+      QUERY="SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';"
+      COUNT=$(PGPASSWORD="${DB_PASS}" psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} -Atw -c "${QUERY}")
+      ;;
+  esac
+
+  if [[ -z ${COUNT} || ${COUNT} -eq 0 ]]; then
+    echo "Setting up Database for first run ..."
+    case ${DB_TYPE} in
+      mysql)
+        mysql -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} -p${DB_PASS} -D ${DB_NAME} < /etc/isp-mail/sql/mysql_mail_improved.sql
+        ;;
+      postgresql)
+        PGPASSWORD="${DB_PASS}" psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} -Atw -f /etc/isp-mail/sql/postgres_mail_improved.sql
+        ;;
+    esac
+    
+  fi
+
+}
