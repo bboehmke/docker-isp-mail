@@ -19,9 +19,9 @@ FILE_DOVECOT_CONF_SQL="/etc/dovecot/dovecot-sql.conf.ext"
 
 
 QUERY_POSTFIX_VIRTUAL_DOMAINS="SELECT 1 FROM virtual_domains WHERE name='%s'"
-QUERY_POSTFIX_VIRTUAL_MAIL="SELECT 1 FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE CONCAT(virtual_users.name,\"@\",virtual_domains.name)='%s'"
-QUERY_POSTFIX_VIRTUAL_ALIAS="SELECT destination FROM virtual_aliases JOIN virtual_domains ON virtual_aliases.domain_id = virtual_domains.id WHERE concat(virtual_aliases.source,\"@\",virtual_domains.name)='%s'"
-QUERY_POSTFIX_VIRTUAL_MAIL_MAIL="SELECT CONCAT(virtual_users.name,\"@\",virtual_domains.name) AS email FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%u' AND virtual_domains.name ='%d'"
+QUERY_POSTFIX_VIRTUAL_MAIL="SELECT 1 FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE CONCAT(virtual_users.name,'@',virtual_domains.name)='%s'"
+QUERY_POSTFIX_VIRTUAL_ALIAS="SELECT destination FROM virtual_aliases JOIN virtual_domains ON virtual_aliases.domain_id = virtual_domains.id WHERE concat(virtual_aliases.source,'@',virtual_domains.name)='%s'"
+QUERY_POSTFIX_VIRTUAL_MAIL_MAIL="SELECT CONCAT(virtual_users.name,'@',virtual_domains.name) AS email FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%u' AND virtual_domains.name ='%d'"
 
 QUERY_DOVECOT_PASSWORD="SELECT virtual_users.name AS username, virtual_domains.name AS domain, password FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%n' AND virtual_domains.name = '%d'"
 QUERY_DOVECOT_USER="SELECT 5000 AS uid, 5000 AS gid, '${MAIL_DIR}/%d/%n' AS home FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%n' AND virtual_domains.name ='%d'"
@@ -267,10 +267,10 @@ init_database() {
     echo "Setting up Database for first run ..."
     case ${DB_TYPE} in
       mysql)
-        mysql -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} -p${DB_PASS} -D ${DB_NAME} < /etc/isp-mail/sql/mail_improved.sql
+        mysql -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} -p${DB_PASS} -D ${DB_NAME} < /etc/isp-mail/sql/mysql_mail_improved.sql
         ;;
       postgresql)
-        `PGPASSWORD="${DB_PASS}" psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} -Atw -f /etc/isp-mail/sql/mail_improved.sql`
+        `PGPASSWORD="${DB_PASS}" psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} -Atw -f /etc/isp-mail/sql/postgres_mail_improved.sql`
         ;;
     esac
     
