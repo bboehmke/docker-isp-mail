@@ -90,7 +90,7 @@ password `password` and the dtabase name `mailDB`*
 
 ```bash
 docker run --name isp-mail -d \
-    -e DB_ADAPTER=postgresql \
+    -e DB_TYPE=postgresql \
     -e DB_HOST=192.168.1.42 \
     -e DB_NAME=mailDB \
     -e DB_USER=mail \
@@ -101,7 +101,7 @@ docker run --name isp-mail -d \
 
 #### Linking to PostgreSQL Container
 
-If a postgresql container is linked, only the `DB_ADAPTER`, `DB_HOST` and 
+If a postgresql container is linked, only the `DB_TYPE`, `DB_HOST` and 
 `DB_PORT` settings are automatically retrieved using the linkage. You may 
 still need to set other database connection parameters such as the `DB_NAME`, 
 `DB_USER`, `DB_PASS` and so on.
@@ -152,7 +152,7 @@ password `password` and the dtabase name `mailDB`*
 
 ```bash
 docker run --name isp-mail -d \
-    -e DB_ADAPTER=mysql \
+    -e DB_TYPE=mysql \
     -e DB_HOST=192.168.1.42 \
     -e DB_NAME=mailDB \
     -e DB_USER=mail \
@@ -163,7 +163,7 @@ docker run --name isp-mail -d \
 
 #### Linking to MySQL Container
 
-If a mysql container is linked, only the `DB_ADAPTER`, `DB_HOST` and `DB_PORT` 
+If a mysql container is linked, only the `DB_TYPE`, `DB_HOST` and `DB_PORT` 
 settings are automatically retrieved using the linkage. You may still need 
 to set other database connection parameters such as the `DB_NAME`, `DB_USER`, 
 `DB_PASS` and so on.
