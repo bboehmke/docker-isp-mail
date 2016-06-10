@@ -1,7 +1,8 @@
 CREATE TABLE virtual_domains (
     id SERIAL,
     name VARCHAR(100) NOT NULL,
-    CONSTRAINT virtual_domains_pk PRIMARY KEY (id)
+    CONSTRAINT virtual_domains_pk PRIMARY KEY (id),
+    CONSTRAINT virtual_domains_name UNIQUE (name)
 );
 CREATE TABLE virtual_users (
     id SERIAL,

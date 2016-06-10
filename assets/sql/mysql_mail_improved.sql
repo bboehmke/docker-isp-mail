@@ -1,7 +1,8 @@
 CREATE TABLE `virtual_domains` (
     `id` INT(11) NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(100) NOT NULL,
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    CONSTRAINT `virtual_domains_name` UNIQUE (`name`)
 );
 CREATE TABLE `virtual_users` (
     `id` INT(11) NOT NULL AUTO_INCREMENT,
