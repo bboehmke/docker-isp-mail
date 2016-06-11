@@ -37,7 +37,7 @@ log() {
 
 QUERY_ALL_DOMAINS="SELECT id, name FROM virtual_domains"
 QUERY_ALL_USERS="SELECT virtual_users.id, CONCAT(virtual_users.name,'@',virtual_domains.name) FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id ORDER BY virtual_domains.name ASC"
-QUERY_ALL_ALIASES="SELECT virtual_aliases.id, virtual_aliases.source, virtual_aliases.destination FROM virtual_aliases JOIN virtual_domains ON virtual_aliases.domain_id = virtual_domains.id ORDER BY virtual_domains.name ASC"
+QUERY_ALL_ALIASES="SELECT virtual_aliases.id, CONCAT(virtual_aliases.source, '@', virtual_domains.name), virtual_aliases.destination FROM virtual_aliases JOIN virtual_domains ON virtual_aliases.domain_id = virtual_domains.id ORDER BY virtual_domains.name ASC"
 
 #QUERY_USERS_PER_DOMAIN="SELECT virtual_users.id, CONCAT(virtual_users.name,'@',virtual_domains.name) FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_domains.name='%s'"
 
@@ -149,7 +149,7 @@ list_aliases() {
     for _ITEM_ in ${_ROWS_}; do
       IFS="|"; declare -a _ROW_=(${_ITEM_})
 
-      echo "ALIAS[${_ROW_[0]},${_ROW_[1]}] = ${_ROW_[2]}"
+      echo "ALIAS[${_ROW_[0]}] = ${_ROW_[1]} -> ${_ROW_[2]}"
 
       _COUNT_=$((_COUNT_+1))
     done
