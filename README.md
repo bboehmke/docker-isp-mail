@@ -16,6 +16,7 @@
     - [SSL](#ssl)
     - [Available Configuration Parameters](#available-configuration-parameters)
 - [Database Structure](#database-structure)
+- [Administration](#administration)
 - [Upgrading](#upgrading)
 - [ToDo](#todo)
 
@@ -280,6 +281,60 @@ The database of this mail server contains of 3 tables:
 | source      | Local name of the email address (eg if the address is `admin@mail.com` the source is `admin`)    |
 | destination | Destination of the redirection (eg `user@mail.com` or an external address like `user@gmail.com`) |
 
+# Administration
+
+The database can be administered directly via a Web-based interface like [**phpPgAdmin** (PostgreSQL)](https://hub.docker.com/r/maxexcloo/phppgadmin/) or [**phpMyAdmin** (MySQL)](https://hub.docker.com/r/phpmyadmin/phpmyadmin/) or via a set of integrated shell-scripts.
+
+All shell-scripts can be executed in an existing container:
+```bash
+docker exec -it <container> <...>
+```
+Or by a temporary container:
+```bash
+docker run -it --rm --link database:<mysql|postgresql> bboehmke/isp-mail <...>
+```
+Possible commands are described in the following sub-sections.
+
+## Domains 
+```bash
+domains -l | -a <domain.xx> | -d <domain.xx>
+```
+  - Options:
+    - `-l`
+      - List Domains
+    - `-a <domain.xx>`
+      - Add Domain
+    - `-d <domain.xx>`
+      - Delete Domain
+    - Example: `docker exec -it <container> domains -a domain.xx`
+
+## Users
+```bash
+users -l | -a <name@domain.xx[:password]> | -d <name@domain.xx>
+```
+  - Options:
+    - `-l`
+      - List all Users
+    - `-a <name@domain.xx[:password]>`
+      - Add User Account `name` for `domain.xx`
+      - If `password` is omitted, the script will ask for a password.
+    - `-d <name@domain.xx>`
+      - Delete User Account `name` for `domain.xx`
+    - Example: `docker exec -it <container> users -a name@domain.xx:password`
+
+## Aliases 
+```bash
+forwards -l | -a <source@domain.xx:destination@domain.yy> | -d <source@domain.xx>
+```
+ - Options:
+    - `-l`
+      - List Aliases
+    - `-a <source@domain.xx:destination@domain.yy>`
+      - Add mail-forward from `source@domain.xx` to destination `destination@domain.yy`
+    - `-d <source@domain.xx>`
+      - Delete mail-forwards for `source@domain.xx`
+    - Example: `docker exec -it <container> forwards -a source@domain.xx:destination@domain.yy`
+
 # Upgrading
 
 Before you upgrade the image you should create a backup of the `/data` volume 
@@ -313,7 +368,6 @@ docker run --name isp-mail -h isp-mail -d \
 *The following features are planned for the future*
 
 - Automatic backup of mailboxes and database with a single command
-- Simple bash user management system
 - Automatic creation of self signed certificates if required
 - Per user mailbox size (from database)
 - Send only mail user

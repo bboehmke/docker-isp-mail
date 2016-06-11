@@ -1,0 +1,431 @@
+#!/bin/bash
+
+# Get scripting functions
+source ${SCRIPT_DIR}/functions
+# Set Database Parameters from Docker Environmant
+finalize_database_parameters
+
+# Never stop on errors immediately
+set +e
+
+# -------
+# Logging
+# -------
+
+ADMIN_LOG_LEVEL=${ADMIN_LOG_LEVEL:-2}
+log() {
+  if [[ -n ${1} && -n ${2} ]]; then
+    if [ ${1} -le ${ADMIN_LOG_LEVEL} ]; then
+      case ${1} in
+        0) echo "ERROR: ${2}" > /dev/stderr;;
+        1) echo "WARNING: ${2}" > /dev/stderr;;
+        2) echo "INFO: ${2}" > /dev/stderr;;
+        3) echo "DEBUG: ${2}" > /dev/stderr;;
+        *) echo "?(UNKNOWN): ${2}" > /dev/stderr;;
+      esac
+    fi
+  else
+    echo "usage ${0} [0123] \"Message\""
+  fi
+}
+
+# --------------------------
+# DB QUERIES (MYSQL / PGSQL)
+# --------------------------
+
+# --- BASE QUERIES ---
+
+QUERY_ALL_DOMAINS="SELECT id, name FROM virtual_domains"
+QUERY_ALL_USERS="SELECT virtual_users.id, CONCAT(virtual_users.name,'@',virtual_domains.name) FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id ORDER BY virtual_domains.name ASC"
+QUERY_ALL_ALIASES="SELECT virtual_aliases.id, CONCAT(virtual_aliases.source, '@', virtual_domains.name), virtual_aliases.destination FROM virtual_aliases JOIN virtual_domains ON virtual_aliases.domain_id = virtual_domains.id ORDER BY virtual_domains.name ASC"
+
+#QUERY_USERS_PER_DOMAIN="SELECT virtual_users.id, CONCAT(virtual_users.name,'@',virtual_domains.name) FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_domains.name='%s'"
+
+QUERY_DOMAIN_BY_NAME="SELECT name FROM virtual_domains WHERE name='%s'"
+QUERY_DOMAIN_ADD="INSERT INTO virtual_domains (name) VALUES ('%s')"
+QUERY_DOMAIN_DEL="DELETE FROM virtual_domains WHERE name='%s'"
+
+QUERY_USER_BY_DOMAIN="SELECT CONCAT(virtual_users.name, '@', virtual_domains.name) FROM virtual_users JOIN virtual_domains ON virtual_domains.id = virtual_users.domain_id WHERE virtual_domains.name = '%s'"
+
+QUERY_ALIAS_BY_="SELECT CONCAT(virtual_aliases.source, '@', virtual_domains.name), virtual_aliases.destination FROM virtual_aliases JOIN virtual_domains ON virtual_domains.id = virtual_aliases.domain_id"
+QUERY_ALIAS_BY_DOMAIN="${QUERY_ALIAS_BY_} WHERE virtual_domains.name = '%s'"
+
+case "${DB_TYPE}" in
+  postgresql)
+    # --- PGSQL QUERIES ---
+    QUERY_DOMAIN_BY_MAIL="SELECT name FROM virtual_domains WHERE name=SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$')"
+    QUERY_USER_EXISTS="SELECT COUNT(*) FROM virtual_users JOIN virtual_domains ON virtual_domains.id = virtual_users.domain_id WHERE virtual_users.name = SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)') AND virtual_domains.name = SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$')"
+    QUERY_USER_ADD="INSERT INTO virtual_users (domain_id, name, password) SELECT id, SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)'), '%s' FROM virtual_domains WHERE name=SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$')"
+    QUERY_USER_DEL="DELETE FROM virtual_users WHERE name=SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)') AND domain_id IN ( SELECT id FROM virtual_domains WHERE name=SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$') )"
+
+    QUERY_ALIAS_BY_MAIL="${QUERY_ALIAS_BY_} WHERE virtual_domains.name = SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$') AND virtual_aliases.source = SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)')"
+    QUERY_ALIAS_ADD="INSERT INTO virtual_aliases (source, domain_id, destination) SELECT SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)'), id, '%s' FROM virtual_domains WHERE name = SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$')"
+    QUERY_ALIAS_DEL="DELETE FROM virtual_aliases WHERE source = SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)') AND domain_id IN ( SELECT id FROM virtual_domains WHERE name = SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$') )"
+    ;;
+  mysql)
+    # --- MYSQL QUERIES ---
+    QUERY_DOMAIN_BY_MAIL="SELECT name FROM virtual_domains WHERE name=SUBSTRING_INDEX('%s','@',-1)"
+
+    QUERY_USER_EXISTS="SELECT COUNT(*) FROM virtual_users JOIN virtual_domains ON virtual_domains.id = virtual_users.domain_id WHERE virtual_users.name = SUBSTRING_INDEX('%s', '@', 1) AND virtual_domains.name = SUBSTRING_INDEX('%s', '@', -1)"
+    QUERY_USER_ADD="INSERT INTO virtual_users (domain_id, name, password) SELECT id, SUBSTRING_INDEX('%s','@',1), '%s' FROM virtual_domains WHERE name=SUBSTRING_INDEX('%s','@',-1)"
+    QUERY_USER_DEL="DELETE FROM virtual_users WHERE name=SUBSTRING_INDEX('%s','@',1) AND domain_id IN ( SELECT id FROM virtual_domains WHERE name=SUBSTRING_INDEX('%s','@',-1) )"
+
+    QUERY_ALIAS_BY_MAIL="${QUERY_ALIAS_BY_} WHERE virtual_domains.name = SUBSTRING_INDEX('%s', '@', -1) AND virtual_aliases.source = SUBSTRING_INDEX('%s', '@', 1)"
+    QUERY_ALIAS_ADD="INSERT INTO virtual_aliases (source, domain_id, destination) SELECT SUBSTRING_INDEX('%s', '@', 1), id, '%s' FROM virtual_domains WHERE name = SUBSTRING_INDEX('%s', '@', -1)"
+    QUERY_ALIAS_DEL="DELETE FROM virtual_aliases WHERE source = SUBSTRING_INDEX('%s', '@', 1) AND domain_id IN ( SELECT id FROM virtual_domains WHERE name = SUBSTRING_INDEX('%s', '@', -1) )"
+    ;;
+  *)
+    log 0 "Unsupported Database Type <${DB_TYPE}>"
+    exit 100;
+    ;;
+esac
+
+# -----------------------------------------
+# DB-QUERY COMMAND (BASED ON DATABASE-TYPE)
+# -----------------------------------------
+
+_db_() {
+  case "${DB_TYPE}" in
+    mysql)
+      log 3 "MYSQL -> ${@}"
+      echo "${@}" | mysql -h${DB_HOST} -u${DB_USER} -p${DB_PASS} -D${DB_NAME} -NLBs | tr '\t' '|'
+      ;;
+    postgresql)
+      log 3 "PGSQL -> ${@}";
+      PGPASSWORD="${DB_PASS}" psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} -1 -A -q -t -F'|' -c "${@}";
+      ;;
+    *)
+      log 0 "Unsupported Database Type <${DB_TYPE}>"
+      exit 100;
+  esac
+}
+
+# ----------------
+# LISTING COMMANDS
+# ----------------
+
+list_domains() {
+  local _LIST_=$(_db_ "${QUERY_ALL_DOMAINS}")
+  local _COUNT_=0
+
+  if [[ -n ${_LIST_} ]]; then
+    IFS=$'\n'; declare -a _ROWS_=${_LIST_}
+    for _ITEM_ in ${_ROWS_}; do
+      IFS="|"; declare -a _ROW_=(${_ITEM_})
+
+      echo "DOMAIN[${_ROW_[0]}] = ${_ROW_[1]}"
+
+      _COUNT_=$((_COUNT_+1))
+    done
+  else
+    log 2 "No Domains found!"
+  fi
+}
+
+list_users() {
+  local _LIST_=$(_db_ "${QUERY_ALL_USERS}")
+  local _COUNT_=0
+
+  if [[ -n ${_LIST_} ]]; then
+    IFS=$'\n'; declare -a _ROWS_=${_LIST_}
+    for _ITEM_ in ${_ROWS_}; do
+      IFS="|"; declare -a _ROW_=(${_ITEM_})
+
+      echo "USER[${_ROW_[0]}] = ${_ROW_[1]}"
+
+      _COUNT_=$((_COUNT_+1))
+    done
+  else
+    log 2 "No Users found!"
+  fi
+}
+
+list_aliases() {
+  local _LIST_=$(_db_ "${QUERY_ALL_ALIASES}")
+  local _COUNT_=0
+
+  if [[ -n ${_LIST_} ]]; then
+    IFS=$'\n'; declare -a _ROWS_=${_LIST_}
+    for _ITEM_ in ${_ROWS_}; do
+      IFS="|"; declare -a _ROW_=(${_ITEM_})
+
+      echo "ALIAS[${_ROW_[0]}] = ${_ROW_[1]} -> ${_ROW_[2]}"
+
+      _COUNT_=$((_COUNT_+1))
+    done
+  else
+    log 2 "No Aliases found!"
+  fi
+}
+
+# ------------------------
+# ADMINISTRATIVE FUNCTIONS
+# ------------------------
+
+# --- DOMAINS ---
+
+## Check, if domain exists by its FQDN
+## param 1: Domain Name / FQDN
+## return: 0 = domain exists, 1 = domain doesn't exist
+domain_exists_by_name() {
+  if [[ -z ${1} ]]; then
+    echo "usage: ${0} <name>"
+    exit 2;
+  fi
+
+  log 3 "Search Domain (by name) <${1}>"
+  local _LIST_=$(_db_ "$(printf "${QUERY_DOMAIN_BY_NAME}" "${1}")")
+
+  if [[ $? == 0 && -n ${_LIST_} ]]; then
+    return 0;
+  else
+    return 1;
+  fi
+}
+
+## Check, if domain exists by mail-address
+## param 1: User's mail address
+## return: 0 = domain exists, 1 = domain doesn't exist
+domain_exists_by_mail() {
+  if [[ -z ${1} ]]; then
+    echo "usage: ${0} <name>"
+    exit 2;
+  fi
+
+  log 3 "Search Domain (by mail) <${1}>"
+  local _LIST_=$(_db_ "$(printf "${QUERY_DOMAIN_BY_MAIL}" "${1}")")
+
+  if [[ $? == 0 && -n ${_LIST_} ]]; then
+    return 0;
+  else
+    return 1;
+  fi
+}
+
+## Add a Domain
+## param 1: Domain Name / FQDN
+## return: 0 = Success, >1 = Error (see log output)
+domain_add() {
+  if [[ -z ${1} ]]; then
+    echo "usage: ${0} <name>"
+    exit 200;
+  fi
+
+  domain_exists_by_name "${1}"
+  if [ $? -eq 1 ]; then
+    log 2 "Add Domain <${1}>"
+    _db_ "$(printf "${QUERY_DOMAIN_ADD}" "${1}")"
+    return $?
+  else
+    log 0 "Domain <${1}> already exists"
+    return 1;
+  fi
+}
+
+## Delete a Domain
+## param 1: Domain Name / FQDN
+## return: 0 = Success, 1 = Domain has linked users, 2 = Domain has linked aliases, >0 = Other errors
+domain_delete() {
+  if [[ -z ${1} ]]; then
+    echo "usage: ${0} <name>"
+    exit 200;
+  fi
+
+  users_by_domain "${1}"
+  if [ $? -eq 0 ]; then
+    log 0 "User(s) still exist!"
+    return 1;
+  fi
+
+  alias_exists_by_domain "${1}"
+  if [ $? -eq 0 ]; then
+    log 0 "Alias(es) still exist!"
+    return 2;
+  fi
+
+  log 2 "Delete Domain <${1}>"
+  _db_ "$(printf "${QUERY_DOMAIN_DEL}" "${1}")"
+
+  return $?
+}
+
+# --- USERS ---
+
+## Check, if user exists by its mail-address
+## param 1: User's mail-address
+## return: 0 = User exists, 1 = User doesn't exist
+user_exists() {
+  if [[ -z ${1} ]]; then
+    echo "usage: ${0} <name>"
+    exit 2;
+  fi
+
+  log 3 "Search User <${1}>"
+  local _COUNT_=$(_db_ "$(printf "${QUERY_USER_EXISTS}" "${1}" "${1}")")
+
+  if [[ $? == 0 && ${_COUNT_} > 0 ]]; then
+    return 0;
+  else
+    return 1;
+  fi
+}
+
+## Get list of users by a domain FQDN
+## param 1: Domain Name / FQDN
+## output: List of Mail-Addresses
+## return: 0 = Success, 1 = On Error (see log output)
+users_by_domain() {
+  #_db_ "$(printf "${QUERY_USER_BY_DOMAIN}" "${1}")"
+  local _LIST_=$(_db_ "$(printf "${QUERY_USER_BY_DOMAIN}" "${1}")")
+  if [[ -n ${_LIST_} ]]; then
+    IFS=$'\n'; declare -a _ROWS_=${_LIST_}
+    for _ITEM_ in ${_ROWS_}; do
+      IFS="|"; declare -a _ROW_=(${_ITEM_})
+      echo "${_ROW_[0]}"
+    done
+
+    return 0;
+  else
+    log 2 "No Users for domain <${1}> found!"
+    return 1;
+  fi
+}
+
+## Add a User to a Domain by its full address
+## param 1: User's Mail-Address
+## param 2: Password
+## return: 0 = Success, >0 = User already exists or other error (see log output)
+user_add() {
+  if [[ -z ${1} || -z ${2} ]]; then
+    echo "usage: ${0} <user@domain.xxx> <password>"
+    exit 200;
+  fi
+
+  domain_exists_by_mail "${1}"
+  if [ $? -gt 0 ]; then
+    log 0 "Domain for address <${1}> doesn't exist!"
+    return 1;
+  fi
+
+  user_exists "${1}"
+  if [ $? -eq 0 ]; then
+    log 0 "User <${1}> already exist!"
+    return 1;
+  fi
+
+  log 2 "Add User <${1}>"
+  _db_ "$(printf "${QUERY_USER_ADD}" "${1}" "${2}" "${1}")"
+
+  return $?
+}
+
+## Delete a User from a Domain by its full address
+## param 1: User's Mail-Address
+## return: 0 = Success, >0 = User doesn't exist or other error (see log output)
+user_delete() {
+  if [[ -z ${1} ]]; then
+    echo "usage: ${0} <name>"
+    exit 200;
+  fi
+
+  user_exists "${1}"
+  if [ $? -gt 0 ]; then
+    log 0 "User <${1}> doesn't exist!"
+    return 1;
+  fi
+
+  log 2 "Delete User <${1}>"
+  _db_ "$(printf "${QUERY_USER_DEL}" "${1}" "${1}")"
+
+  return $?
+}
+
+# --- ALIASES ---
+
+## Check, if Forward-Alias exists by a Domain Name / FQDN
+## param 1: Domain Name / FQDN
+## return: 0 = Alias Exists, 1 = Alias doesn't exist
+alias_exists_by_domain() {
+  if [[ -z ${1} ]]; then
+    echo "usage: ${0} <name>"
+    exit 2;
+  fi
+
+  log 3 "Search Alias (by domain) <${1}>"
+  local _LIST_=$(_db_ "$(printf "${QUERY_ALIAS_BY_DOMAIN}" "${1}")")
+
+  if [[ $? == 0 && -n ${_LIST_} ]]; then
+    return 0;
+  else
+    return 1;
+  fi
+}
+
+## Check, if Forward-Alias exists by a source mail-address
+## param 1: Source Mail-Address
+## return: 0 = Alias Exists, 1 = Alias doesn't exist
+alias_exists_by_mail() {
+  if [[ -z ${1} ]]; then
+    echo "usage: ${0} <name>"
+    exit 2;
+  fi
+
+  log 3 "Search Alias (by mail) <${1}>"
+  local _LIST_=$(_db_ "$(printf "${QUERY_ALIAS_BY_MAIL}" "${1}" "${1}")")
+
+  if [[ $? == 0 && -n ${_LIST_} ]]; then
+    return 0;
+  else
+    return 1;
+  fi
+}
+
+## Add a Forward-Alias
+## param 1: Source Mail-Address
+## param 2: Destination Mail-Address
+## return: 0 = Success, >1 = Source-Domain doesn't exist or Alias already exists or other error (see log output)
+alias_add() {
+  if [[ -z ${1} || -z ${2} ]]; then
+    echo "usage: ${0} <source> <destination>"
+    exit 200;
+  fi
+
+  domain_exists_by_mail "${1}"
+  if [ $? -gt 0 ]; then
+    log 0 "Domain for address <${1}> doesn't exist!"
+    return 1;
+  fi
+
+  alias_exists_by_mail "${1}"
+  if [ $? -eq 0 ]; then
+    log 0 "Alias for address <${1}> already exists!"
+    return 1;
+  fi
+
+  log 2 "Add Alias <${1}> -> <${2}>"
+  _db_ "$(printf "${QUERY_ALIAS_ADD}" "${1}" "${2}" "${1}")"
+
+  return $?
+}
+
+## Delete a Forward-Alias
+## param 1: Source Mail-Address
+## return: 0 = Success, >1 = Alias doesn't exist or other error (see log output)
+alias_delete() {
+  if [[ -z ${1} ]]; then
+    echo "usage: ${0} <source-address>"
+    exit 200;
+  fi
+
+  alias_exists_by_mail "${1}"
+  if [ $? -gt 0 ]; then
+    log 0 "Alias <${1}> doesn't exist!"
+    return 1;
+  fi
+
+  log 2 "Delete Alias <${1}>"
+  _db_ "$(printf "${QUERY_ALIAS_DEL}" "${1}" "${1}")"
+
+  return $?
+}
+
