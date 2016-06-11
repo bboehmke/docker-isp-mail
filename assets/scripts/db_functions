@@ -100,6 +100,10 @@ _db_() {
   esac
 }
 
+# ----------------
+# LISTING COMMANDS
+# ----------------
+
 list_domains() {
   local _LIST_=$(_db_ "${QUERY_ALL_DOMAINS}")
   local _COUNT_=0
@@ -160,6 +164,9 @@ list_aliases() {
 
 # --- DOMAINS ---
 
+## Check, if domain exists by its FQDN
+## param 1: Domain Name / FQDN
+## return: 0 = domain exists, 1 = domain doesn't exist
 domain_exists_by_name() {
   if [[ -z ${1} ]]; then
     echo "usage: ${0} <name>"
@@ -176,6 +183,9 @@ domain_exists_by_name() {
   fi
 }
 
+## Check, if domain exists by mail-address
+## param 1: User's mail address
+## return: 0 = domain exists, 1 = domain doesn't exist
 domain_exists_by_mail() {
   if [[ -z ${1} ]]; then
     echo "usage: ${0} <name>"
@@ -192,6 +202,9 @@ domain_exists_by_mail() {
   fi
 }
 
+## Add a Domain
+## param 1: Domain Name / FQDN
+## return: 0 = Success, >1 = Error (see log output)
 domain_add() {
   if [[ -z ${1} ]]; then
     echo "usage: ${0} <name>"
@@ -209,6 +222,9 @@ domain_add() {
   fi
 }
 
+## Delete a Domain
+## param 1: Domain Name / FQDN
+## return: 0 = Success, 1 = Domain has linked users, 2 = Domain has linked aliases, >0 = Other errors
 domain_delete() {
   if [[ -z ${1} ]]; then
     echo "usage: ${0} <name>"
@@ -235,6 +251,9 @@ domain_delete() {
 
 # --- USERS ---
 
+## Check, if user exists by its mail-address
+## param 1: User's mail-address
+## return: 0 = User exists, 1 = User doesn't exist
 user_exists() {
   if [[ -z ${1} ]]; then
     echo "usage: ${0} <name>"
@@ -251,6 +270,10 @@ user_exists() {
   fi
 }
 
+## Get list of users by a domain FQDN
+## param 1: Domain Name / FQDN
+## output: List of Mail-Addresses
+## return: 0 = Success, 1 = On Error (see log output)
 users_by_domain() {
   #_db_ "$(printf "${QUERY_USER_BY_DOMAIN}" "${1}")"
   local _LIST_=$(_db_ "$(printf "${QUERY_USER_BY_DOMAIN}" "${1}")")
@@ -268,6 +291,10 @@ users_by_domain() {
   fi
 }
 
+## Add a User to a Domain by its full address
+## param 1: User's Mail-Address
+## param 2: Password
+## return: 0 = Success, >0 = User already exists or other error (see log output)
 user_add() {
   if [[ -z ${1} || -z ${2} ]]; then
     echo "usage: ${0} <user@domain.xxx> <password>"
@@ -292,6 +319,9 @@ user_add() {
   return $?
 }
 
+## Delete a User from a Domain by its full address
+## param 1: User's Mail-Address
+## return: 0 = Success, >0 = User doesn't exist or other error (see log output)
 user_delete() {
   if [[ -z ${1} ]]; then
     echo "usage: ${0} <name>"
@@ -312,6 +342,9 @@ user_delete() {
 
 # --- ALIASES ---
 
+## Check, if Forward-Alias exists by a Domain Name / FQDN
+## param 1: Domain Name / FQDN
+## return: 0 = Alias Exists, 1 = Alias doesn't exist
 alias_exists_by_domain() {
   if [[ -z ${1} ]]; then
     echo "usage: ${0} <name>"
@@ -328,6 +361,9 @@ alias_exists_by_domain() {
   fi
 }
 
+## Check, if Forward-Alias exists by a source mail-address
+## param 1: Source Mail-Address
+## return: 0 = Alias Exists, 1 = Alias doesn't exist
 alias_exists_by_mail() {
   if [[ -z ${1} ]]; then
     echo "usage: ${0} <name>"
@@ -344,6 +380,10 @@ alias_exists_by_mail() {
   fi
 }
 
+## Add a Forward-Alias
+## param 1: Source Mail-Address
+## param 2: Destination Mail-Address
+## return: 0 = Success, >1 = Source-Domain doesn't exist or Alias already exists or other error (see log output)
 alias_add() {
   if [[ -z ${1} || -z ${2} ]]; then
     echo "usage: ${0} <source> <destination>"
@@ -368,6 +408,9 @@ alias_add() {
   return $?
 }
 
+## Delete a Forward-Alias
+## param 1: Source Mail-Address
+## return: 0 = Success, >1 = Alias doesn't exist or other error (see log output)
 alias_delete() {
   if [[ -z ${1} ]]; then
     echo "usage: ${0} <source-address>"
