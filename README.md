@@ -291,7 +291,7 @@ docker exec -it <container> <...>
 ```
 Or by a temporary container:
 ```bash
-docker run -it --rm --link database:<mysql|postgresql> <image> <...>
+docker run -it --rm --link database:<mysql|postgresql> bboehmke/isp-mail <...>
 ```
 Possible commands are described in the following sub-sections.
 
@@ -306,7 +306,7 @@ domains -l | -a <domain.xx> | -d <domain.xx>
       - Add Domain
     - `-d <domain.xx>`
       - Delete Domain
-    - Example: `docker exec -it <container> domains -a name@domain.xx`
+    - Example: `docker exec -it <container> domains -a domain.xx`
 
 ## Users
 ```bash
