@@ -48,6 +48,10 @@ RUN chmod +x /etc/cron.daily/spamassassin
 COPY assets/scripts ${SCRIPT_DIR}
 RUN chmod 755 ${SCRIPT_DIR}/entrypoint.sh
 
+# copy management scripts
+COPY assets/admin /usr/local/bin
+RUN chmod 755 /usr/local/bin/*
+
 # set volume
 VOLUME "${DATA_DIR}"
 

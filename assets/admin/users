@@ -1,0 +1,64 @@
+#!/bin/bash
+
+usage() {
+  echo "usage: ${0} -l | -a <user@domain.xx[:password]> | -d <user@domain.xx>"
+}
+
+if [ -x ${SCRIPT_DIR}/db_functions ]; then
+  source ${SCRIPT_DIR}/db_functions
+else
+  echo "ERROR: Database Functions not found!"
+  exit 255;
+fi
+
+# Generate Password
+genpasswd() {
+  if [[ -n ${1} ]]; then
+    doveadm pw -s SHA512-CRYPT -p${1}
+  else
+    doveadm pw -s SHA512-CRYPT
+  fi
+}
+
+# Analyse Commandline
+RET=0
+while getopts ":hla:d:" OPTION; do
+  case ${OPTION} in
+    l)
+      list_users; RET=$?;
+      ;;
+    a)
+      _MAIL_=$(echo ${OPTARG} | awk 'BEGIN{ FS=":"; }{ print $1; }');
+      _PASSWD_=$(echo ${OPTARG} | awk 'BEGIN{ FS=":"; }{ print $2; }');
+      _GENPASSWD_=$(genpasswd ${_PASSWD_});
+
+      if [[ -n ${_MAIL_} && -n ${_GENPASSWD_} ]]; then
+        log 2 "Mail: ${_MAIL_} / PassWD: ${_GENPASSWD_}"
+        user_add ${_MAIL_} ${_GENPASSWD_}; RET=$?;
+      else
+        log 0 "Missing Parametes";
+        usage;
+      fi
+      ;;
+    d)
+      user_delete ${OPTARG}; RET=$?;
+      ;;
+    h)
+      usage;
+      exit 0;
+      ;;
+    :)
+      log 0 "Missing Argument for option <${OPTION}>!";
+      usage;
+      exit 200;
+      ;;
+    \?)
+      log 0 "Invalid Option <${OPTION}>";
+      usage;
+      exit 201;
+      ;;
+  esac
+done
+
+exit ${RET}
+

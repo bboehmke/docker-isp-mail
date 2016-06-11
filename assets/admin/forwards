@@ -1,0 +1,57 @@
+#!/bin/bash
+
+usage() {
+  echo "usage: ${0} -l | -a <source-address>:<destination-address> | -d <source-address>"
+}
+
+if [ -x ${SCRIPT_DIR}/db_functions ]; then
+  source ${SCRIPT_DIR}/db_functions
+else
+  echo "ERROR: Database Functions not found!"
+  exit 255;
+fi
+
+# Analyse Commandline
+RET=0
+while getopts ":hla:d:" OPTION; do
+  case ${OPTION} in
+    l)
+      list_aliases;
+      ;;
+    a)
+      _SRCMAIL_=$(echo ${OPTARG} | awk 'BEGIN{ FS=":"; }{ print $1; }');
+      _DESTMAIL_=$(echo ${OPTARG} | awk 'BEGIN{ FS=":"; }{ print $2; }');
+      if [[ -n ${_SRCMAIL_} && -n ${_DESTMAIL_} ]]; then
+        alias_add "${_SRCMAIL_}" "${_DESTMAIL_}"; RET=$?;
+      else
+        log 0 "Missing Parameters";
+        usage;
+      fi
+      ;;
+    d)
+      if [[ -n ${OPTARG} ]]; then
+        alias_delete "${OPTARG}"
+      else
+        log 0 "Missing Parameter";
+        usage;
+      fi
+      ;;
+    h)
+      usage;
+      exit 0;
+      ;;
+    :)
+      log 0 "Missing Argument for option <${OPTION}>!";
+      usage;
+      exit 200;
+      ;;
+    \?)
+      log 0 "Invalid Option <${OPTION}>";
+      usage;
+      exit 201;
+      ;;
+  esac
+done
+
+exit ${RET}
+
