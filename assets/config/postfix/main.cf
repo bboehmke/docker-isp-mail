@@ -3,7 +3,7 @@
 # =====================================
 
 # hostname of the mail server
-myhostname = {{HOSTNAME}}
+myhostname = {{MAIL_SERVER_HOSTNAME}}
 
 # message in the SMTP server's greeting banner
 smtpd_banner = $myhostname ESMTP $mail_name
