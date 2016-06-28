@@ -22,7 +22,7 @@ genpasswd() {
 
 # Analyse Commandline
 RET=0
-while getopts ":hla:p:d:" OPTION; do
+while getopts ":hla:p:d:D:" OPTION; do
   case ${OPTION} in
     l)
       list_users; RET=$?;
@@ -45,6 +45,25 @@ while getopts ":hla:p:d:" OPTION; do
       ;;
     d)
       user_delete ${OPTARG}; RET=$?;
+      ;;
+    D)
+      _NAME_=$(echo ${OPTARG} | awk 'BEGIN{ FS="@"; }{ print $1; }');
+      _DOMAIN_=$(echo ${OPTARG} | awk 'BEGIN{ FS="@"; }{ print $2; }');
+      _MAILDIR_=${MAIL_DIR}/${_DOMAIN_}/${_NAME_};
+      if [[ -n ${_NAME_} && -n ${_DOMAIN_} ]]; then
+        if [ -d ${_MAILDIR_} ]; then
+          log 2 "Remove Mailbox-Directory of user <${OPTARG}>";
+
+          rm -rf ${_MAILDIR_};
+          RET=$?;
+        else
+          log 0 "Mailbox-Directory <.../${_DOMAIN_}/${_NAME_}> doesn't exist!";
+          exit 1;
+        fi
+      else
+        log 0 "ERROR: Parameter missing";
+        usage;
+      fi
       ;;
     h)
       usage;
