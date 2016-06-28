@@ -318,6 +318,9 @@ users -l | -a <name@domain.xx[:password]> | -d <name@domain.xx>
     - `-a <name@domain.xx[:password]>`
       - Add User Account `name` for `domain.xx`
       - If `password` is omitted, the script will ask for a password.
+    - `-p <name@domain.xx[:password]>`
+      - Change a User's Password
+      - If `password` is omitted, the script will ask for a password.
     - `-d <name@domain.xx>`
       - Delete User Account `name` for `domain.xx`
     - Example: `docker exec -it <container> users -a name@domain.xx:password`
