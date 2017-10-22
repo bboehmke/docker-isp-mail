@@ -95,7 +95,7 @@ dovecot_destination_recipient_limit = 1
 # SpamAssassin
 # =====================================
 # set SpamAssassin socket
-smtpd_milters = unix:/spamass/spamass.sock
+smtpd_milters = unix:/var/spool/postfix/spamass/spamass.sock
 
 # set macros
 milter_connect_macros = i j {daemon_name} v {if_name} _
