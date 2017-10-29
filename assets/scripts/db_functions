@@ -36,7 +36,7 @@ log() {
 # --- BASE QUERIES ---
 
 QUERY_ALL_DOMAINS="SELECT id, name FROM virtual_domains"
-QUERY_ALL_USERS="SELECT virtual_users.id, CONCAT(virtual_users.name,'@',virtual_domains.name) FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id ORDER BY virtual_domains.name ASC"
+QUERY_ALL_USERS="SELECT virtual_users.id, CONCAT(virtual_users.name,'@',virtual_domains.name), quota_limit FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id ORDER BY virtual_domains.name ASC"
 QUERY_ALL_ALIASES="SELECT virtual_aliases.id, CONCAT(virtual_aliases.source, '@', virtual_domains.name), virtual_aliases.destination FROM virtual_aliases JOIN virtual_domains ON virtual_aliases.domain_id = virtual_domains.id ORDER BY virtual_domains.name ASC"
 
 #QUERY_USERS_PER_DOMAIN="SELECT virtual_users.id, CONCAT(virtual_users.name,'@',virtual_domains.name) FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_domains.name='%s'"
@@ -53,23 +53,23 @@ QUERY_ALIAS_BY_DOMAIN="${QUERY_ALIAS_BY_} WHERE virtual_domains.name = '%s'"
 case "${DB_TYPE}" in
   postgresql)
     # --- PGSQL QUERIES ---
-    QUERY_DOMAIN_BY_MAIL="SELECT name FROM virtual_domains WHERE name=SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$')"
-    QUERY_USER_EXISTS="SELECT COUNT(*) FROM virtual_users JOIN virtual_domains ON virtual_domains.id = virtual_users.domain_id WHERE virtual_users.name = SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)') AND virtual_domains.name = SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$')"
-    QUERY_USER_ADD="INSERT INTO virtual_users (domain_id, name, password) SELECT id, SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)'), '%s' FROM virtual_domains WHERE name=SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$')"
-    QUERY_USER_UPDATE="UPDATE virtual_users SET password = '%s' FROM virtual_domains WHERE virtual_users.name = SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)') AND virtual_domains.name = SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$')"
-    QUERY_USER_DEL="DELETE FROM virtual_users WHERE name=SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)') AND domain_id IN ( SELECT id FROM virtual_domains WHERE name=SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$') )"
+    QUERY_DOMAIN_BY_MAIL="SELECT name FROM virtual_domains WHERE name=SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,})$')"
+    QUERY_USER_EXISTS="SELECT COUNT(*) FROM virtual_users JOIN virtual_domains ON virtual_domains.id = virtual_users.domain_id WHERE virtual_users.name = SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)') AND virtual_domains.name = SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,})$')"
+    QUERY_USER_ADD="INSERT INTO virtual_users (domain_id, name, password, quota_limit) SELECT id, SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)'), '%s', '%s' FROM virtual_domains WHERE name=SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,})$')"
+    QUERY_USER_UPDATE="UPDATE virtual_users SET %s = '%s' FROM virtual_domains WHERE virtual_users.name = SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)') AND virtual_domains.name = SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,})$')"
+    QUERY_USER_DEL="DELETE FROM virtual_users WHERE name=SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)') AND domain_id IN ( SELECT id FROM virtual_domains WHERE name=SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,})$') )"
 
-    QUERY_ALIAS_BY_MAIL="${QUERY_ALIAS_BY_} WHERE virtual_domains.name = SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$') AND virtual_aliases.source = SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)')"
-    QUERY_ALIAS_ADD="INSERT INTO virtual_aliases (source, domain_id, destination) SELECT SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)'), id, '%s' FROM virtual_domains WHERE name = SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$')"
-    QUERY_ALIAS_DEL="DELETE FROM virtual_aliases WHERE source = SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)') AND domain_id IN ( SELECT id FROM virtual_domains WHERE name = SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,3})$') )"
+    QUERY_ALIAS_BY_MAIL="${QUERY_ALIAS_BY_} WHERE virtual_domains.name = SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,})$') AND virtual_aliases.source = SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)')"
+    QUERY_ALIAS_ADD="INSERT INTO virtual_aliases (source, domain_id, destination) SELECT SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)'), id, '%s' FROM virtual_domains WHERE name = SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,})$')"
+    QUERY_ALIAS_DEL="DELETE FROM virtual_aliases WHERE source = SUBSTRING('%s' FROM '^([0-9a-zA-Z]+)') AND domain_id IN ( SELECT id FROM virtual_domains WHERE name = SUBSTRING('%s' FROM '([a-zA-Z0-9]{2,}\.[a-zA-Z]{2,})$') )"
     ;;
   mysql)
     # --- MYSQL QUERIES ---
     QUERY_DOMAIN_BY_MAIL="SELECT name FROM virtual_domains WHERE name=SUBSTRING_INDEX('%s','@',-1)"
 
     QUERY_USER_EXISTS="SELECT COUNT(*) FROM virtual_users JOIN virtual_domains ON virtual_domains.id = virtual_users.domain_id WHERE virtual_users.name = SUBSTRING_INDEX('%s', '@', 1) AND virtual_domains.name = SUBSTRING_INDEX('%s', '@', -1)"
-    QUERY_USER_ADD="INSERT INTO virtual_users (domain_id, name, password) SELECT id, SUBSTRING_INDEX('%s','@',1), '%s' FROM virtual_domains WHERE name=SUBSTRING_INDEX('%s','@',-1)"
-    QUERY_USER_UPDATE="UPDATE virtual_users, virtual_domains SET virtual_users.password = '%s' WHERE virtual_users.name = SUBSTRING_INDEX('%s', '@', 1) AND virtual_domains.name = SUBSTRING_INDEX('%s', '@', -1)"
+    QUERY_USER_ADD="INSERT INTO virtual_users (domain_id, name, password, quota_limit_bytes) SELECT id, SUBSTRING_INDEX('%s','@',1), '%s', '%s' FROM virtual_domains WHERE name=SUBSTRING_INDEX('%s','@',-1)"
+    QUERY_USER_UPDATE="UPDATE virtual_users, virtual_domains SET virtual_users.%s = '%s' WHERE virtual_users.name = SUBSTRING_INDEX('%s', '@', 1) AND virtual_domains.name = SUBSTRING_INDEX('%s', '@', -1)"
     QUERY_USER_DEL="DELETE FROM virtual_users WHERE name=SUBSTRING_INDEX('%s','@',1) AND domain_id IN ( SELECT id FROM virtual_domains WHERE name=SUBSTRING_INDEX('%s','@',-1) )"
 
     QUERY_ALIAS_BY_MAIL="${QUERY_ALIAS_BY_} WHERE virtual_domains.name = SUBSTRING_INDEX('%s', '@', -1) AND virtual_aliases.source = SUBSTRING_INDEX('%s', '@', 1)"
@@ -133,7 +133,11 @@ list_users() {
     for _ITEM_ in ${_ROWS_}; do
       IFS="|"; declare -a _ROW_=(${_ITEM_})
 
-      echo "USER[${_ROW_[0]}] = ${_ROW_[1]}"
+      if [ ${_ROW_[2]} -eq 0 ]; then
+        echo "USER[${_ROW_[0]}] = ${_ROW_[1]} / unlimited"
+      else
+        echo "USER[${_ROW_[0]}] = ${_ROW_[1]} / ${_ROW_[2]} KB"
+      fi
 
       _COUNT_=$((_COUNT_+1))
     done
@@ -296,10 +300,11 @@ users_by_domain() {
 ## Add a User to a Domain by its full address
 ## param 1: User's Mail-Address
 ## param 2: Password
+## param 3: Quota [bytes]
 ## return: 0 = Success, >0 = User already exists or other error (see log output)
 user_add() {
-  if [[ -z ${1} || -z ${2} ]]; then
-    echo "usage: ${0} <user@domain.xxx> <password>"
+  if [[ -z ${1} || -z ${2} || -z ${3} ]]; then
+    echo "usage: ${0} <user@domain.xxx> <password> <quota-in-bytes>"
     exit 200;
   fi
 
@@ -316,7 +321,7 @@ user_add() {
   fi
 
   log 2 "Add User <${1}>"
-  _db_ "$(printf "${QUERY_USER_ADD}" "${1}" "${2}" "${1}")"
+  _db_ "$(printf "${QUERY_USER_ADD}" "${1}" "${2}" "${3}" "${1}")"
 
   return $?
 }
@@ -325,7 +330,7 @@ user_add() {
 ## param 1: User's Mail-Address
 ## param 2: User's new Password
 ## return: 0 = Success, >0 = User doesn't exist or other error (see log output)
-user_update() {
+user_update_password() {
   if [[ -z ${1} || -z ${2} ]]; then
     echo "usage: ${0} <mail-address> <password>"
     exit 200;
@@ -337,8 +342,30 @@ user_update() {
     return 1;
   fi
 
-  log 2 "Update User <${1}>"
-  _db_ "$(printf "${QUERY_USER_UPDATE}" "${2}" "${1}" "${1}")"
+  log 2 "Update User Password <${1}>"
+  _db_ "$(printf "${QUERY_USER_UPDATE}" "password" "${2}" "${1}" "${1}")"
+
+  return $?
+}
+
+## Update a User's quota by its full address
+## param 1: User's Mail-Address
+## param 2: User's new Quota
+## return: 0 = Success, >0 = User doesn't exist or other error (see log output)
+user_update_quota() {
+  if [[ -z ${1} || -z ${2} ]]; then
+    echo "usage: ${0} <mail-address> <password>"
+    exit 200;
+  fi
+
+  user_exists "${1}"
+  if [ $? -gt 0 ]; then
+    log 0 "User <${1}> doesn't exist!"
+    return 1;
+  fi
+
+  log 2 "Update User Quota <${1}>"
+  _db_ "$(printf "${QUERY_USER_UPDATE}" "quota_limit" "${2}" "${1}" "${1}")"
 
   return $?
 }

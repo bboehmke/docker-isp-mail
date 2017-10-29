@@ -9,6 +9,7 @@ CREATE TABLE virtual_users (
     domain_id INTEGER NOT NULL,
     name VARCHAR(100) NOT NULL,
     password VARCHAR(200) NOT NULL,
+    quota_limit INTEGER NOT NULL,
     CONSTRAINT virtual_users_pk PRIMARY KEY (id),
     CONSTRAINT virtual_users_email UNIQUE (domain_id, name),
     CONSTRAINT fk_users_domain FOREIGN KEY (domain_id) REFERENCES virtual_domains (id)

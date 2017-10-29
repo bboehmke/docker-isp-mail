@@ -239,6 +239,10 @@ Alternatively you can use docker-compose.*
 - **DB_PASS**: Password for database connection.
 - **MAIL_POSTMASTER_ADDRESS**: Address of the postmaster of this server.
 - **MAIL_SERVER_HOSTNAME**: Name used as mail server host name. (Default: host name of container).
+- **QUOTA_STORAGE**: Default quota for new mailboxes (Default: 0 = unlimited).
+- **QUOTA_WARNING**: Quota level (in %) at which a warning message will be sent to the user (Default: 90)
+- **QUTOA_GRACE**: Quota grace limit (Default: 10%%)
+  - **NOTE:** Percentage values MUST be extended by two percentage signs [%%]!
 - **SSL_CERT**: Name of the SSL/TLS certificate file in /data/ssl/. (Default: mail.crt)
 - **SSL_KEY**: Name of the SSL/TLS key file in /data/ssl/. (Default: mail.key)
 - **SSL_DH_PARAM_LENGTH**: Length of the DH parameters. (Default: 1024)
@@ -265,12 +269,13 @@ The database of this mail server contains of 3 tables:
 
 ## virtual_users
 
-| Column    | Description                                                                |
-|-----------|----------------------------------------------------------------------------|
-| id        | Id of this user (automatic created)                                        |
-| domain_id | Id of the domain this user is for (must exist in `virtual_domains`)        |
-| name      | Name of the user (eg if the address is `user@mail.com` the name is `user`) |
-| password  | Hash of the user password                                                  |
+| Column       | Description                                                                |
+|--------------|----------------------------------------------------------------------------|
+| id           | Id of this user (automatic created)                                        |
+| domain_id    | Id of the domain this user is for (must exist in `virtual_domains`)        |
+| name         | Name of the user (eg if the address is `user@mail.com` the name is `user`) |
+| password     | Hash of the user password                                                  |
+| quota_limit  | User's Quota Limit [KByte] (0 = unlimited)                                 |
 
 ## virtual_aliases
 
@@ -318,9 +323,13 @@ users -l | -a <name@domain.xx[:password]> | -d <name@domain.xx>
     - `-a <name@domain.xx[:password]>`
       - Add User Account `name` for `domain.xx`
       - If `password` is omitted, the script will ask for a password.
+      - Quota is set to 'unlimited' (change with `-q`)
     - `-p <name@domain.xx[:password]>`
       - Change a User's Password
       - If `password` is omitted, the script will ask for a password.
+    - `-q <name@domain.xx:quota>`
+      - Change a User's Quota [KByte]
+      - 0 = unlimited
     - `-d <name@domain.xx>`
       - Delete User Account `name` for `domain.xx`
     - `-D <name@domain.xx>`
@@ -375,5 +384,4 @@ docker run --name isp-mail -h isp-mail -d \
 
 - Automatic backup of mailboxes and database with a single command
 - Automatic creation of self signed certificates if required
-- Per user mailbox size (from database)
 - Send only mail user

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 usage() {
-  echo "usage: ${0} -l | -a <user@domain.xx[:password]> | -p <user@domain.xx[:password]> | -d <user@domain.xx> | -D <user@domain.xx>"
+  echo "usage: ${0} -l | -a <user@domain.xx[:password] | -p <user@domain.xx:password> | -q <user@domain.xx:quota-in-bytes> | -d <user@domain.xx> | -D <user@domain.xx>"
 }
 
 if [ -x ${SCRIPT_DIR}/db_functions ]; then
@@ -22,25 +22,48 @@ genpasswd() {
 
 # Analyse Commandline
 RET=0
-while getopts ":hla:p:d:D:" OPTION; do
+while getopts ":hla:p:q:d:D:" OPTION; do
   case ${OPTION} in
     l)
       list_users; RET=$?;
       ;;
-    a|p)
+    a)
       _MAIL_=$(echo ${OPTARG} | awk 'BEGIN{ FS=":"; }{ print $1; }');
       _PASSWD_=$(echo ${OPTARG} | awk 'BEGIN{ FS=":"; }{ print $2; }');
       _GENPASSWD_=$(genpasswd ${_PASSWD_});
+      _QUOTA_=${QUOTA_STORAGE_DEFAULT}
 
       if [[ -n ${_MAIL_} && -n ${_GENPASSWD_} ]]; then
-        log 2 "Mail: ${_MAIL_} / PassWD: ${_GENPASSWD_}"
-        case ${OPTION} in
-          a) user_add ${_MAIL_} ${_GENPASSWD_}; RET=$?;;
-          p) user_update ${_MAIL_} ${_GENPASSWD_}; RET=$?;;
-        esac
+        log 2 "Mail: ${_MAIL_} / PassWD: ${_GENPASSWD_} / Default Quota: ${_QUOTA_}";
+        user_add ${_MAIL_} ${_GENPASSWD_} ${_QUOTA_};
+        RET=$?;
       else
         log 0 "Missing Parametes";
         usage;
+      fi
+      ;;
+    p|q)
+      _MAIL_=$(echo ${OPTARG} | awk 'BEGIN{ FS=":"; }{ print $1; }');
+      _PARAM_=$(echo ${OPTARG} | awk 'BEGIN{ FS=":"; }{ print $2; }');
+
+      if [[ -n ${_MAIL_} ]]; then
+        case ${OPTION} in
+          p)
+            _GENPASSWD_=$(genpasswd ${_PASSWD_});
+            log 2 "Mail: ${_MAIL_} / PassWD: ${_GENPASSWD_}";
+            user_update_password ${_MAIL_} ${_GENPASSWD_};
+            RET=$?;
+            ;;
+          q)
+            _QUOTA_=${_PARAM_:-$QUOTA_STORAGE}
+            log 2 "Mail: ${_MAIL_} / Quota: ${_QUOTA_}";
+            user_update_quota ${_MAIL_} ${_QUOTA_};
+            RET=$?;
+            ;;
+        esac
+      else
+        log 0 "Missing Parametes";
+        usage:
       fi
       ;;
     d)

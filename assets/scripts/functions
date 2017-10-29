@@ -13,9 +13,9 @@ FILE_POSTFIX_DATABASE_MAIL_MAIL="/etc/postfix/database_email2email.cf"
 FILE_DOVECOT_CONF_MAIL="/etc/dovecot/conf.d/10-mail.conf"
 FILE_DOVECOT_CONF_SSL="/etc/dovecot/conf.d/10-ssl.conf"
 FILE_DOVECOT_CONF_LDA="/etc/dovecot/conf.d/15-lda.conf"
+FILE_DOVECOT_CONF_QUOTA="/etc/dovecot/conf.d/90-quota.conf"
 FILE_DOVECOT_CONF_SQL="/etc/dovecot/dovecot-sql.conf.ext"
-
-
+FILE_DOVECOT_BIN_QUOTA_WARNING="/etc/dovecot/bin/quota-warning.sh"
 
 
 QUERY_POSTFIX_VIRTUAL_DOMAINS="SELECT 1 FROM virtual_domains WHERE name='%s'"
@@ -24,7 +24,7 @@ QUERY_POSTFIX_VIRTUAL_ALIAS="SELECT destination FROM virtual_aliases JOIN virtua
 QUERY_POSTFIX_VIRTUAL_MAIL_MAIL="SELECT CONCAT(virtual_users.name,'@',virtual_domains.name) AS email FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%u' AND virtual_domains.name ='%d'"
 
 QUERY_DOVECOT_PASSWORD="SELECT virtual_users.name AS username, virtual_domains.name AS domain, password FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%n' AND virtual_domains.name = '%d'"
-QUERY_DOVECOT_USER="SELECT 5000 AS uid, 5000 AS gid, '${MAIL_DIR}/%d/%n' AS home FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%n' AND virtual_domains.name ='%d'"
+QUERY_DOVECOT_USER="SELECT 5000 AS uid, 5000 AS gid, '${MAIL_DIR}/%d/%n' AS home, CONCAT('*:storage=', quota_limit) AS quota_rule FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%n' AND virtual_domains.name ='%d'"
 
 
 ## Replace placeholders with values
@@ -167,7 +167,10 @@ configure_dovecot() {
 
   update_template ${FILE_DOVECOT_CONF_MAIL} MAIL_DIR
   update_template ${FILE_DOVECOT_CONF_SSL} SSL_KEY_PATH SSL_CERT_PATH SSL_DH_PARAM_LENGTH
-  update_template ${FILE_DOVECOT_CONF_LDA} POSTMASTER_ADDRESS
+  update_template ${FILE_DOVECOT_CONF_LDA} MAIL_POSTMASTER_ADDRESS
+  update_template ${FILE_DOVECOT_CONF_QUOTA} QUOTA_GRACE QUOTA_STORAGE QUOTA_WARNING
+  update_template ${FILE_DOVECOT_BIN_QUOTA_WARNING} MAIL_POSTMASTER_ADDRESS QUOTA_GRACE
+  chmod +x ${FILE_DOVECOT_BIN_QUOTA_WARNING}
 
   update_template ${FILE_DOVECOT_CONF_SQL} \
     DB_DRIVER \

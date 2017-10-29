@@ -99,3 +99,9 @@ smtpd_milters = unix:/var/spool/postfix/spamass/spamass.sock
 
 # set macros
 milter_connect_macros = i j {daemon_name} v {if_name} _
+
+# =====================================
+# Quota
+# =====================================
+smtpd_recipient_restrictions = check_policy_service inet:localhost:12340
+
