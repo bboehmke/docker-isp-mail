@@ -101,7 +101,7 @@ smtpd_milters = unix:/var/spool/postfix/spamass/spamass.sock
 milter_connect_macros = i j {daemon_name} v {if_name} _
 
 # =====================================
-# Quota
+# Quota & Receive Permissions
 # =====================================
-smtpd_recipient_restrictions = check_policy_service inet:localhost:12340
+smtpd_recipient_restrictions = check_recipient_access {{DB_DRIVER}}:/etc/postfix/database_recp_restrictions.cf, check_policy_service inet:localhost:12340
 

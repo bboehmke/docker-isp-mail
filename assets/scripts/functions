@@ -9,6 +9,7 @@ FILE_POSTFIX_DATABASE_DOMAINS="/etc/postfix/database_virtual_mailbox_domains.cf"
 FILE_POSTFIX_DATABASE_MAIL="/etc/postfix/database_virtual_mailbox_maps.cf"
 FILE_POSTFIX_DATABASE_ALIAS="/etc/postfix/database_virtual_alias_maps.cf"
 FILE_POSTFIX_DATABASE_MAIL_MAIL="/etc/postfix/database_email2email.cf"
+FILE_POSTFIX_DATABASE_RECP_RES="/etc/postfix/database_recp_restrictions.cf"
 
 FILE_DOVECOT_CONF_MAIL="/etc/dovecot/conf.d/10-mail.conf"
 FILE_DOVECOT_CONF_SSL="/etc/dovecot/conf.d/10-ssl.conf"
@@ -22,9 +23,12 @@ QUERY_POSTFIX_VIRTUAL_DOMAINS="SELECT 1 FROM virtual_domains WHERE name='%s'"
 QUERY_POSTFIX_VIRTUAL_MAIL="SELECT 1 FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE CONCAT(virtual_users.name,'@',virtual_domains.name)='%s'"
 QUERY_POSTFIX_VIRTUAL_ALIAS="SELECT destination FROM virtual_aliases JOIN virtual_domains ON virtual_aliases.domain_id = virtual_domains.id WHERE concat(virtual_aliases.source,'@',virtual_domains.name)='%s'"
 QUERY_POSTFIX_VIRTUAL_MAIL_MAIL="SELECT CONCAT(virtual_users.name,'@',virtual_domains.name) AS email FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%u' AND virtual_domains.name ='%d'"
+QUERY_POSTFIX_RECP_RESTRICTIONS="SELECT CASE WHEN receive_mail=TRUE THEN 'PERMIT' WHEN receive_mail=FALSE THEN 'REJECT' END AS VARCHAR FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%u' AND virtual_domains.name ='%d'"
 
 QUERY_DOVECOT_PASSWORD="SELECT virtual_users.name AS username, virtual_domains.name AS domain, password FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%n' AND virtual_domains.name = '%d'"
 QUERY_DOVECOT_USER="SELECT 5000 AS uid, 5000 AS gid, '${MAIL_DIR}/%d/%n' AS home, CONCAT('*:storage=', quota_limit) AS quota_rule FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%n' AND virtual_domains.name ='%d'"
+# Denies access to INBOX via IMAP or POP3
+#QUERY_DOVECOT_USER="SELECT 5000 AS uid, 5000 AS gid, '${MAIL_DIR}/%d/%n' AS home, CONCAT('*:storage=', quota_limit) AS quota_rule FROM virtual_users JOIN virtual_domains ON virtual_users.domain_id = virtual_domains.id WHERE virtual_users.name = '%n' AND virtual_domains.name ='%d' AND virtual_users.receive_mail = true"
 
 
 ## Replace placeholders with values
@@ -193,6 +197,7 @@ configure_postfix() {
   create_postfix_sql ${FILE_POSTFIX_DATABASE_MAIL} "${QUERY_POSTFIX_VIRTUAL_MAIL}"
   create_postfix_sql ${FILE_POSTFIX_DATABASE_ALIAS} "${QUERY_POSTFIX_VIRTUAL_ALIAS}"
   create_postfix_sql ${FILE_POSTFIX_DATABASE_MAIL_MAIL} "${QUERY_POSTFIX_VIRTUAL_MAIL_MAIL}"
+  create_postfix_sql ${FILE_POSTFIX_DATABASE_RECP_RES} "${QUERY_POSTFIX_RECP_RESTRICTIONS}"
 
   # add missing files to postfix chroot
   cp -f /etc/services /var/spool/postfix/etc/services

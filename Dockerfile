@@ -1,5 +1,5 @@
 FROM debian:jessie
-MAINTAINER Benjamin Böhmke
+MAINTAINER Benjamin Boehmke <benjamin@boehmke.net>; Dennis Twardowsky <twardowsky@gmail.com>
 
 ENV DATA_DIR=/data \
     MAIL_DIR=/data/maildir \

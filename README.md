@@ -1,4 +1,4 @@
-# bboehmke/isp-mail:latest
+# ISP-like Mail-Server
 
 - [Introduction](#introduction)
     - [Differences to the tutorial](#differences-to-the-tutorial)
@@ -269,13 +269,14 @@ The database of this mail server contains of 3 tables:
 
 ## virtual_users
 
-| Column       | Description                                                                |
-|--------------|----------------------------------------------------------------------------|
-| id           | Id of this user (automatic created)                                        |
-| domain_id    | Id of the domain this user is for (must exist in `virtual_domains`)        |
-| name         | Name of the user (eg if the address is `user@mail.com` the name is `user`) |
-| password     | Hash of the user password                                                  |
-| quota_limit  | User's Quota Limit [KByte] (0 = unlimited)                                 |
+| Column       | Description                                                                                            |
+|--------------|--------------------------------------------------------------------------------------------------------|
+| id           | Id of this user (automatic created)                                                                    |
+| domain_id    | Id of the domain this user is for (must exist in `virtual_domains`)                                    |
+| name         | Name of the user (eg if the address is `user@mail.com` the name is `user`)                             |
+| password     | Hash of the user password                                                                              |
+| quota_limit  | User's Quota Limit [KByte] (0 = unlimited)                                                             |
+| receive_mail | State of the user's INBOX (TRUE = enabled, mails are delivered / FALSE = disabled, mails are rejected) |
 
 ## virtual_aliases
 
@@ -330,6 +331,10 @@ users -l | -a <name@domain.xx[:password]> | -d <name@domain.xx>
     - `-q <name@domain.xx:quota>`
       - Change a User's Quota [KByte]
       - 0 = unlimited
+    - `-s <name@domain.xx>`
+      - Disable a User's INBOX
+    - `-S <name@domain.xx>`
+      - Enable a User's INBOX
     - `-d <name@domain.xx>`
       - Delete User Account `name` for `domain.xx`
     - `-D <name@domain.xx>`
@@ -384,4 +389,3 @@ docker run --name isp-mail -h isp-mail -d \
 
 - Automatic backup of mailboxes and database with a single command
 - Automatic creation of self signed certificates if required
-- Send only mail user

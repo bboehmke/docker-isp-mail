@@ -1,7 +1,7 @@
 #!/bin/bash
 
 usage() {
-  echo "usage: ${0} -l | -a <user@domain.xx[:password] | -p <user@domain.xx:password> | -q <user@domain.xx:quota-in-bytes> | -d <user@domain.xx> | -D <user@domain.xx>"
+  echo "usage: ${0} -l | -a <user@domain.xx[:password] | -p <user@domain.xx:password> | -q <user@domain.xx:quota-in-bytes> | -s|S <user@domain.xx> | -d <user@domain.xx> | -D <user@domain.xx>"
 }
 
 if [ -x ${SCRIPT_DIR}/db_functions ]; then
@@ -22,7 +22,7 @@ genpasswd() {
 
 # Analyse Commandline
 RET=0
-while getopts ":hla:p:q:d:D:" OPTION; do
+while getopts ":hla:p:q:s:S:d:D:" OPTION; do
   case ${OPTION} in
     l)
       list_users; RET=$?;
@@ -63,7 +63,28 @@ while getopts ":hla:p:q:d:D:" OPTION; do
         esac
       else
         log 0 "Missing Parametes";
-        usage:
+        usage;
+      fi
+      ;;
+    s|S)
+      _MAIL_=$(echo ${OPTARG} | awk 'BEGIN{ FS=":"; }{ print $1; }');
+
+      if [[ -n ${_MAIL_} ]]; then
+        case ${OPTION} in
+          s)
+              log 2 "Mail: ${_MAIL_} / DISABLE";
+              user_update_inboxstate ${_MAIL_} FALSE;
+              RET=$?;
+              ;;
+          S)
+              log 2 "Mail: ${_MAIL_} / ENABLE";
+              user_update_inboxstate ${_MAIL_} TRUE;
+              RET=$?;
+              ;;
+        esac
+      else
+        log 0 "Missing Parametes";
+        usage;
       fi
       ;;
     d)

@@ -354,7 +354,7 @@ user_update_password() {
 ## return: 0 = Success, >0 = User doesn't exist or other error (see log output)
 user_update_quota() {
   if [[ -z ${1} || -z ${2} ]]; then
-    echo "usage: ${0} <mail-address> <password>"
+    echo "usage: ${0} <mail-address> <quota-in-kb>"
     exit 200;
   fi
 
@@ -364,8 +364,36 @@ user_update_quota() {
     return 1;
   fi
 
-  log 2 "Update User Quota <${1}>"
+  log 2 "Update User Quota <${1}> to <${2} KB>"
   _db_ "$(printf "${QUERY_USER_UPDATE}" "quota_limit" "${2}" "${1}" "${1}")"
+
+  return $?
+}
+
+## Update a User's INBOX state
+## param 1: User's Mail-Address
+## param 2: INBOX state (true = enbled, false = disabled)
+## return: 0 = Success, >0 = User doesn't exist or other error (see log output)
+user_update_inboxstate() {
+  if [[ -z ${1} || -z ${2} ]]; then
+    echo "usage: ${0} <mail-address> <state>"
+    exit 200;
+  fi
+
+  _STATE_=${2,,}
+  if ! [[ ${_STATE_} == "true" || ${_STATE_} == "false" ]]; then
+    echo "ERROR: Only 'true' or 'false' are allowed!"
+    exit 300;
+  fi
+
+  user_exists "${1}"
+  if [ $? -gt 0 ]; then
+    log 0 "User <${1}> doesn't exist!"
+    return 1;
+  fi
+
+  log 2 "Update User INBOX state <${1}> to <${_STATE_}>"
+  _db_ "$(printf "${QUERY_USER_UPDATE}" "receive_mail" "${2}" "${1}" "${1}")"
 
   return $?
 }
