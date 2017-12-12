@@ -31,7 +31,7 @@ while getopts ":hla:p:q:s:S:d:D:" OPTION; do
       _MAIL_=$(echo ${OPTARG} | awk 'BEGIN{ FS=":"; }{ print $1; }');
       _PASSWD_=$(echo ${OPTARG} | awk 'BEGIN{ FS=":"; }{ print $2; }');
       _GENPASSWD_=$(genpasswd ${_PASSWD_});
-      _QUOTA_=${QUOTA_STORAGE_DEFAULT}
+      _QUOTA_=${QUOTA_STORAGE}
 
       if [[ -n ${_MAIL_} && -n ${_GENPASSWD_} ]]; then
         log 2 "Mail: ${_MAIL_} / PassWD: ${_GENPASSWD_} / Default Quota: ${_QUOTA_}";
