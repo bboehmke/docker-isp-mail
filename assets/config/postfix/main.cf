@@ -17,8 +17,8 @@ relayhost =
 # trusted networks for additional privileges
 mynetworks = 127.0.0.0/8
 
-# set size of mailbox (bytes)
-mailbox_size_limit = {{MAILBOX_SIZE}}
+# set size of mailboxes to unlimited, because it is handled by dovecot
+mailbox_size_limit = 0
 
 # set recipient delimiter (GMail like alias address)
 recipient_delimiter = +
