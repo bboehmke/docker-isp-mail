@@ -9,7 +9,7 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y supervisor logrotate wget \
         postfix postfix-mysql postfix-pgsql swaks dovecot-mysql dovecot-pgsql \
         dovecot-pop3d dovecot-imapd dovecot-lmtpd dovecot-managesieved mysql-client \
-        postgresql-client rsyslog pwgen sudo gettext-base \
+        postgresql-client rsyslog redis-server pwgen sudo gettext-base \
         python3 python3-pip && \
     wget -O- https://rspamd.com/apt-stable/gpg.key | apt-key add - && \
     echo "deb http://rspamd.com/apt-stable/ stretch main" > /etc/apt/sources.list.d/rspamd.list && \
@@ -22,7 +22,7 @@ RUN apt-get update && \
 RUN mv /etc/dovecot /etc/dovecot.org && \
     mv /etc/postfix /etc/postfix.org && mkdir /etc/postfix && cp -r /etc/postfix.org/postfix-files* /etc/postfix
 
-# create vmail user and add spamass-milter to debian-spamd group
+# create vmail user 
 RUN groupadd -g 5000 vmail && \
     useradd -g vmail -u 5000 vmail -d ${MAIL_DIR} && \
     adduser debian-spamd
@@ -34,7 +34,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y
 # copy new configurations
 COPY assets/config/dovecot/ /etc/dovecot/
 COPY assets/config/postfix/ /etc/postfix/
-COPY assets/config/rspamd/ /etc/rspamd/override.d/
+COPY assets/config/rspamd/local.d /etc/rspamd/local.d/
+COPY assets/config/rspamd/override.d /etc/rspamd/override.d/
 COPY assets/config/supervisor/ /etc/supervisor/conf.d/
 COPY assets/sql/ /etc/isp-mail/sql/
 

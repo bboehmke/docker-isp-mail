@@ -29,7 +29,16 @@ appInit () {
 
   # compile sieve scripts
   echo "Compile sieve scripts"
-  sievec /etc/dovecot/sieve-after/spam-to-folder.sieve
+
+  for file in /etc/dovecot/sieve-after/*.sieve; do
+    echo "  [after] ${file}"
+    sievec ${file}
+  done
+
+  for file in /etc/dovecot/sieve/*.sieve; do
+    echo "  [base] ${file}"
+    sievec ${file}
+  done
 }
 
 appStart () {
