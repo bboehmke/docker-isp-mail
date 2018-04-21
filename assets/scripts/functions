@@ -167,7 +167,7 @@ configure_dovecot() {
 
   update_template ${FILE_DOVECOT_CONF_MAIL} MAIL_DIR
   update_template ${FILE_DOVECOT_CONF_SSL} SSL_KEY_PATH SSL_CERT_PATH SSL_DH_PARAM_LENGTH
-  update_template ${FILE_DOVECOT_CONF_LDA} POSTMASTER_ADDRESS
+  update_template ${FILE_DOVECOT_CONF_LDA} MAIL_POSTMASTER_ADDRESS
 
   update_template ${FILE_DOVECOT_CONF_SQL} \
     DB_DRIVER \
@@ -244,8 +244,8 @@ check_and_prepare_SSL() {
 
   # generate dh param for postfix
   echo "Start Generating DH parameters this may take some time ..."
-  openssl gendh -out /etc/postfix/dh_512.pem -2 512
-  openssl gendh -out /etc/postfix/dh_1024.pem -2 ${SSL_DH_PARAM_LENGTH}
+  openssl dhparam -out /etc/postfix/dh_512.pem -2 512
+  openssl dhparam -out /etc/postfix/dh_1024.pem -2 ${SSL_DH_PARAM_LENGTH}
 }
 
 
