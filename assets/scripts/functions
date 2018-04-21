@@ -244,8 +244,8 @@ check_and_prepare_SSL() {
 
   # generate dh param for postfix
   echo "Start Generating DH parameters this may take some time ..."
-  openssl gendh -out /etc/postfix/dh_512.pem -2 512
-  openssl gendh -out /etc/postfix/dh_1024.pem -2 ${SSL_DH_PARAM_LENGTH}
+  openssl dhparam -out /etc/postfix/dh_512.pem -2 512
+  openssl dhparam -out /etc/postfix/dh_1024.pem -2 ${SSL_DH_PARAM_LENGTH}
 }
 
 

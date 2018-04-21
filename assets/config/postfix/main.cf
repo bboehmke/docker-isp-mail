@@ -88,14 +88,16 @@ virtual_mailbox_maps = {{DB_DRIVER}}:/etc/postfix/database_virtual_mailbox_maps.
 virtual_alias_maps = {{DB_DRIVER}}:/etc/postfix/database_virtual_alias_maps.cf,{{DB_DRIVER}}:/etc/postfix/database_email2email.cf
 
 # set dovecot as delivery service for virtual domains
-virtual_transport = dovecot
+virtual_transport = lmtp:unix:private/dovecot-lmtp
 dovecot_destination_recipient_limit = 1
 
 # =====================================
-# SpamAssassin
+# RSpamD
 # =====================================
-# set SpamAssassin socket
-smtpd_milters = unix:/spamass/spamass.sock
-
+# set RSPAMD socket
+smtpd_milters = inet:127.0.0.1:11332
+non_smtpd_milters = inet:127.0.0.1:11332
+milter_protocol = 6
 # set macros
-milter_connect_macros = i j {daemon_name} v {if_name} _
+milter_connect_macros = i {mail_addr} {client_addr} {client_name} {auth_authen}
+

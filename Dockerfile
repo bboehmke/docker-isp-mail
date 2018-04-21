@@ -1,5 +1,4 @@
-FROM debian:jessie
-MAINTAINER Benjamin Böhmke
+FROM debian:stretch
 
 ENV DATA_DIR=/data \
     MAIL_DIR=/data/maildir \
@@ -7,27 +6,26 @@ ENV DATA_DIR=/data \
 
 # get and install software
 RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y supervisor logrotate \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y supervisor logrotate wget \
         postfix postfix-mysql postfix-pgsql swaks dovecot-mysql dovecot-pgsql \
-        dovecot-pop3d dovecot-imapd dovecot-managesieved mysql-client \
-        postgresql-client rsyslog spamassassin spamass-milter sudo gettext-base && \
+        dovecot-pop3d dovecot-imapd dovecot-lmtpd dovecot-managesieved mysql-client \
+        postgresql-client rsyslog pwgen sudo gettext-base \
+        python3 python3-pip && \
+    wget -O- https://rspamd.com/apt-stable/gpg.key | apt-key add - && \
+    echo "deb http://rspamd.com/apt-stable/ stretch main" > /etc/apt/sources.list.d/rspamd.list && \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y rspamd && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# FIX Debian bug #739738
-RUN sed 's/return if \!/return undef if \!/g' -i /usr/share/perl5/Mail/SpamAssassin/Util.pm
-
 # move original configurations and cron files
 RUN mv /etc/dovecot /etc/dovecot.org && \
-    mv /etc/postfix /etc/postfix.org && \
-    mv /etc/default/spamassassin /etc/default/spamassassin.org && \
-    mv /etc/cron.daily/spamassassin /etc/cron.daily/spamassassin.org && \
-    chmod -x /etc/cron.daily/*.org
+    mv /etc/postfix /etc/postfix.org && mkdir /etc/postfix && cp -r /etc/postfix.org/postfix-files* /etc/postfix
 
 # create vmail user and add spamass-milter to debian-spamd group
 RUN groupadd -g 5000 vmail && \
     useradd -g vmail -u 5000 vmail -d ${MAIL_DIR} && \
-    adduser spamass-milter debian-spamd
+    adduser debian-spamd
 
 # TODO move up
 RUN apt-get update
@@ -36,13 +34,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y
 # copy new configurations
 COPY assets/config/dovecot/ /etc/dovecot/
 COPY assets/config/postfix/ /etc/postfix/
+COPY assets/config/rspamd/ /etc/rspamd/override.d/
 COPY assets/config/supervisor/ /etc/supervisor/conf.d/
-COPY assets/config/spamassassin/spamassassin /etc/default/spamassassin
 COPY assets/sql/ /etc/isp-mail/sql/
-
-# copy crons
-COPY assets/config/cron/spamassassin /etc/cron.daily/spamassassin
-RUN chmod +x /etc/cron.daily/spamassassin
 
 # prepare entry point
 COPY assets/scripts ${SCRIPT_DIR}
