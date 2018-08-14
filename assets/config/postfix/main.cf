@@ -20,6 +20,9 @@ mynetworks = 127.0.0.0/8
 # set size of mailbox (bytes)
 mailbox_size_limit = {{MAILBOX_SIZE}}
 
+# set max size of message (bytes)
+message_size_limit = {{MESSAGE_SIZE}}
+
 # set recipient delimiter (GMail like alias address)
 recipient_delimiter = +
 
