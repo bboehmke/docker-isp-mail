@@ -1,3 +1,9 @@
+# No further development
+
+See [Mailu](https://github.com/Mailu/Mailu) for a similar/better project
+
+
+
 # bboehmke/isp-mail:latest
 
 - [Introduction](#introduction)
